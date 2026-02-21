@@ -1,0 +1,30 @@
+<!-- wechat-demo/index.wxml -->
+<view class="container">
+  <!-- Login Page -->
+  <view wx:if="{{!sessionId}}" class="login">
+    <button bindtap="startChat">Start Chat</button>
+  </view>
+
+  <!-- Chat Page -->
+  <view wx:else class="chat">
+    <scroll-view scroll-y class="messages">
+      <block wx:for="{{messages}}" wx:key="index">
+        <view class="message {{item.role}}">
+          <view class="avatar">{{item.role === 'assistant' ? '🤖' : '👤'}}</view>
+          <view class="bubble">{{item.content}}</view>
+        </view>
+      </block>
+      <view wx:if="{{isTyping}}" class="typing">Assistant is typing...</view>
+    </scroll-view>
+
+    <view class="input-area">
+      <input 
+        value="{{inputValue}}" 
+        placeholder="Type a message..." 
+        bindinput="onInput"
+        bindconfirm="sendMessage"
+      />
+      <button size="mini" bindtap="sendMessage">Send</button>
+    </view>
+  </view>
+</view>

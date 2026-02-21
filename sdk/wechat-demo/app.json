@@ -1,0 +1,22 @@
+{
+  "pages": [
+    "sdk/wechat-demo/index"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#0066cc",
+    "navigationBarTitleText": "TinyWebChat",
+    "navigationBarTextStyle": "white"
+  },
+  "networkTimeout": {
+    "request": 10000,
+    "connectSocket": 10000,
+    "uploadFile": 10000,
+    "downloadFile": 10000
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "Your location"
+    }
+  }
+}
