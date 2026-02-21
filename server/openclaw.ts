@@ -16,6 +16,12 @@ const sessions = new Map<string, WebchatSession>();
 const messageQueues = new Map<string, WebchatMessage[]>();
 const pendingJobs = new Map<string, { resolve: Function; reject: Function }>();
 
+// Message processing mode: 'queue' (one at a time) or 'batch' (all together)
+const PROCESSING_MODE = process.env.PROCESSING_MODE || 'queue';
+
+// Track processing state per session
+const sessionProcessing = new Map<string, boolean>();
+
 interface WebchatSession {
   id: string;
   token: string;
@@ -127,6 +133,122 @@ async function callOpenClawAgent(message: string, sessionKey: string = 'main'): 
   });
 }
 
+/**
+ * Process messages one at a time (QUEUE mode)
+ * Only processes when not already processing this session
+ */
+async function processQueue(sessionId: string): Promise<void> {
+  // Check if already processing
+  if (sessionProcessing.get(sessionId)) {
+    console.log(`[QUEUE] ${sessionId}: Already processing, message queued`);
+    return;
+  }
+  
+  // Mark as processing
+  sessionProcessing.set(sessionId, true);
+  broadcastToSession(sessionId, { type: 'typing', data: { isTyping: true } });
+  
+  try {
+    // Get the latest user message that needs a response
+    const queue = messageQueues.get(sessionId) || [];
+    const lastUserMsg = [...queue].reverse().find(m => m.role === 'user');
+    
+    if (!lastUserMsg) {
+      console.log(`[QUEUE] ${sessionId}: No user messages to process`);
+      return;
+    }
+    
+    // Check if already responded to this message
+    const hasResponse = queue.some(m => m.role === 'assistant' && m.timestamp > lastUserMsg.timestamp);
+    if (hasResponse) {
+      console.log(`[QUEUE] ${sessionId}: Already responded to latest message`);
+      return;
+    }
+    
+    console.log(`[QUEUE] ${sessionId}: Processing "${lastUserMsg.content.substring(0, 30)}..."`);
+    
+    const response = await callOpenClawAgent(lastUserMsg.content);
+    
+    const assistantMsg: WebchatMessage = {
+      id: generateId(),
+      sessionId,
+      role: 'assistant',
+      content: response,
+      timestamp: Date.now(),
+    };
+    queue.push(assistantMsg);
+    messageQueues.set(sessionId, queue);
+    
+    broadcastToSession(sessionId, { type: 'message', data: assistantMsg });
+    console.log(`[QUEUE] ${sessionId}: Response "${response.substring(0, 30)}..."`);
+    
+  } catch (err) {
+    console.error(`[QUEUE] ${sessionId} ERROR:`, err);
+    broadcastToSession(sessionId, { 
+      type: 'error', 
+      data: { message: err instanceof Error ? err.message : 'Unknown error' } 
+    });
+  } finally {
+    sessionProcessing.set(sessionId, false);
+    broadcastToSession(sessionId, { type: 'typing', data: { isTyping: false } });
+  }
+}
+
+/**
+ * Process all queued messages together (BATCH mode)
+ * Sends all user messages as context to OpenClaw
+ */
+async function processBatch(sessionId: string): Promise<void> {
+  if (sessionProcessing.get(sessionId)) {
+    console.log(`[BATCH] ${sessionId}: Already processing, will batch on completion`);
+    return;
+  }
+  
+  sessionProcessing.set(sessionId, true);
+  broadcastToSession(sessionId, { type: 'typing', data: { isTyping: true } });
+  
+  try {
+    const queue = messageQueues.get(sessionId) || [];
+    const userMessages = queue.filter(m => m.role === 'user');
+    
+    // Check if we already have a response for all messages
+    const respondedCount = queue.filter(m => m.role === 'assistant').length;
+    if (respondedCount >= userMessages.length) {
+      console.log(`[BATCH] ${sessionId}: All messages already responded`);
+      return;
+    }
+    
+    // Build context from all messages
+    const context = userMessages.map(m => `${m.role}: ${m.content}`).join('\n');
+    console.log(`[BATCH] ${sessionId}: Processing ${userMessages.length} messages`);
+    
+    const response = await callOpenClawAgent(context);
+    
+    const assistantMsg: WebchatMessage = {
+      id: generateId(),
+      sessionId,
+      role: 'assistant',
+      content: response,
+      timestamp: Date.now(),
+    };
+    queue.push(assistantMsg);
+    messageQueues.set(sessionId, queue);
+    
+    broadcastToSession(sessionId, { type: 'message', data: assistantMsg });
+    console.log(`[BATCH] ${sessionId}: Batch response "${response.substring(0, 30)}..."`);
+    
+  } catch (err) {
+    console.error(`[BATCH] ${sessionId} ERROR:`, err);
+    broadcastToSession(sessionId, { 
+      type: 'error', 
+      data: { message: err instanceof Error ? err.message : 'Unknown error' } 
+    });
+  } finally {
+    sessionProcessing.set(sessionId, false);
+    broadcastToSession(sessionId, { type: 'typing', data: { isTyping: false } });
+  }
+}
+
 // SSE clients for real-time updates
 const sseClients = new Map<string, Set<ServerResponse>>();
 
@@ -225,34 +347,17 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     
     console.log(`[MSG] ${body.sessionId}: ${body.content}`);
     
-    // Send response immediately, then process agent in background (fire-and-forget)
+    // Send response immediately
     sendJson(res, 200, { success: true, messageId: userMsg.id, status: 'processing' });
     
-    // Send typing indicator
-    broadcastToSession(body.sessionId, { type: 'typing', data: { isTyping: true } });
-    
-    // Process agent async (fire and forget - no await)
-    callOpenClawAgent(body.content).then((response) => {
-      const assistantMsg: WebchatMessage = {
-        id: generateId(),
-        sessionId: body.sessionId,
-        role: 'assistant',
-        content: response,
-        timestamp: Date.now(),
-      };
-      queue.push(assistantMsg);
-      messageQueues.set(body.sessionId, queue);
-      broadcastToSession(body.sessionId, { type: 'message', data: assistantMsg });
-      broadcastToSession(body.sessionId, { type: 'typing', data: { isTyping: false } });
-      console.log(`[RESP] ${response.substring(0, 50)}...`);
-    }).catch((err) => {
-      console.error('[ERROR]', err);
-      broadcastToSession(body.sessionId, { 
-        type: 'error', 
-        data: { message: err.message || 'Unknown error' } 
-      });
-      broadcastToSession(body.sessionId, { type: 'typing', data: { isTyping: false } });
-    });
+    // Add to queue and process based on mode
+    if (PROCESSING_MODE === 'batch') {
+      // Batch mode: process all queued messages together
+      processBatch(body.sessionId);
+    } else {
+      // Queue mode (default): process one at a time
+      processQueue(body.sessionId);
+    }
     return;
   }
   
