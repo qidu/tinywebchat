@@ -46,62 +46,125 @@ This project creates a proper channel plugin that's:
    └─────────┘       └──────────┘      └────────────┘
 ```
 
+## Quick Start
+
+### Run the Server
+
+```bash
+# Clone and run
+cd tinywebchat
+npm run openclaw
+
+# Or with custom port
+PORT=3002 npm run openclaw
+```
+
+### Test with curl
+
+```bash
+# Create session
+SESSION=$(curl -s -X POST http://localhost:3002/v1/webchat/sessions)
+SESSION_ID=$(echo $SESSION | jq -r '.id')
+TOKEN=$(echo $SESSION | jq -r '.token')
+
+# Send message
+curl -X POST http://localhost:3002/v1/webchat/send \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d "{\"sessionId\": \"$SESSION_ID\", \"content\": \"Hello!\"}"
+
+# Get messages
+curl http://localhost:3002/v1/webchat/sessions/$SESSION_ID/messages \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Test with Browser
+
+Open `test-chat.html` in a browser to test the UI.
+
 ## API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/v1/webchat/sessions` | POST | Create new session |
+| `/v1/webchat/sessions` | GET | List all sessions |
 | `/v1/webchat/send` | POST | Send message to agent |
-| `/v1/webchat/sessions` | GET | List sessions |
 | `/v1/webchat/sessions/:id/messages` | GET | Get message history |
-| `/v1/webchat/events` | GET | SSE for incoming messages |
+| `/v1/webchat/events` | GET | SSE for real-time updates |
 
-## Implementation Phases
+## Concurrent Message Processing
 
-### Phase 1: Channel Plugin Skeleton
-- [ ] Create `/src/channels/plugins/webchat/`
-- [ ] Implement `WebchatConfig` schema
-- [ ] Add to channel catalog
+TinyWebChat handles concurrent messages in two modes:
 
-### Phase 2: HTTP API
-- [ ] REST endpoints (send, sessions, messages)
-- [ ] SSE for real-time events
-- [ ] Token-based authentication
+### Queue Mode (Default)
 
-### Phase 3: WeChat Mini-Program Support
-- [ ] Simple JS SDK (~10kb)
-- [ ] Compatible with WeChat's limited JS environment
-- [ ] Token-based auth (no WS)
+Messages are processed **one at a time** per session. If multiple messages arrive while processing, they wait in queue.
 
-### Phase 4: H5 Optimizations
-- [ ] Minimal CSS (<20kb)
-- [ ] Preact instead of React
-- [ ] Lazy loading
+```bash
+PROCESSING_MODE=queue npm run openclaw
+```
+
+**Behavior:**
+- User sends "msg1", "msg2", "msg3" simultaneously
+- Agent processes "msg1" first
+- "msg2", "msg3" wait in queue
+- Agent processes each sequentially
+
+### Batch Mode
+
+All queued messages are combined into a **single context** and sent to the agent together.
+
+```bash
+PROCESSING_MODE=batch npm run openclaw
+```
+
+**Behavior:**
+- User sends "msg1", "msg2", "msg3" simultaneously
+- All messages combined: "user: msg1\nuser: msg2\nuser: msg3"
+- Single agent call with full context
+- Single response addressing all messages
+
+### Comparison
+
+| Mode | Use Case | Pros | Cons |
+|------|----------|------|------|
+| Queue | Sequential conversation | Simple, predictable | Slower for bursts |
+| Batch | Fast Q&A, context-rich | Faster, more context | May miss nuance |
 
 ## File Structure
 
 ```
 tinywebchat/
+├── server/
+│   ├── index.ts         # Standalone test server
+│   └── openclaw.ts     # OpenClaw-integrated server
 ├── src/
 │   └── channels/
 │       └── plugins/
 │           └── webchat/
-│               ├── index.ts              # Plugin entry
-│               ├── config.ts             # Config schema
-│               ├── types.ts              # Type definitions  
-│               ├── gateway.ts            # Gateway methods
-│               ├── http.ts               # HTTP endpoints
-│               ├── events.ts             # Event handlers
-│               └── ui/                   # Lightweight H5 UI
+│               ├── index.ts
+│               ├── config.ts
+│               ├── types.ts
+│               ├── gateway.ts
+│               ├── http.ts
+│               └── ui/
 │                   ├── index.html
 │                   ├── app.js
 │                   └── styles.css
-├── sdk/                                  # WeChat Mini-Program SDK
-│   ├── webchat-sdk.js
-│   └── README.md
-├── docs/
-│   └── api.md
+├── sdk/
+│   ├── webchat-sdk.js  # Browser SDK
+│   └── wechat-demo/    # WeChat Mini-Program demo
+├── test-chat.html      # Browser test UI
 └── README.md
 ```
+
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | 3002 | Server port |
+| `PROCESSING_MODE` | queue | Message processing: queue or batch |
 
 ## Comparison
 
@@ -112,45 +175,11 @@ tinywebchat/
 | Size | Full React app | <50kb total |
 | WeChat MP | ❌ | ✅ |
 | H5 Browser | ✅ (heavy) | ✅ (lightweight) |
-| Offline support | ❌ | ✅ (queue & retry) |
+| Concurrent handling | ❌ | ✅ (queue/batch) |
 
-## Usage
+## WeChat Mini-Program
 
-### WeChat Mini-Program
-```javascript
-import { WebChatSDK } from './webchat-sdk';
-
-const sdk = new WebChatSDK({
-  baseUrl: 'https://your-gateway.com',
-  token: 'user-session-token'
-});
-
-// Send message
-sdk.sendMessage('Hello!').then(msg => console.log(msg));
-
-// Subscribe to responses
-sdk.onMessage(msg => {
-  console.log('Received:', msg.content);
-});
-```
-
-### H5 Browser
-```html
-<script src="webchat.min.js"></script>
-<div id="chat-container"></div>
-<script>
-  WebChat.init({
-    container: '#chat-container',
-    token: 'user-session-token'
-  });
-</script>
-```
-
-## Requirements
-
-- OpenClaw Gateway 2026.x+
-- Node.js 20+
-- For WeChat Mini-Program: WeChat DevTools
+See `sdk/wechat-demo/` for a complete WeChat Mini-Program example.
 
 ## License
 
