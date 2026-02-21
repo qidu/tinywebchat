@@ -225,17 +225,14 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     
     console.log(`[MSG] ${body.sessionId}: ${body.content}`);
     
-    try {
-      // Call OpenClaw agent
-      sendJson(res, 200, { success: true, messageId: userMsg.id, status: 'processing' });
-      
-      // Send typing indicator
-      broadcastToSession(body.sessionId, { type: 'typing', data: { isTyping: true } });
-      
-      // In production, this would be async and stream the response
-      // For now, we respond immediately and process in background
-      const response = await callOpenClawAgent(body.content);
-      
+    // Send response immediately, then process agent in background (fire-and-forget)
+    sendJson(res, 200, { success: true, messageId: userMsg.id, status: 'processing' });
+    
+    // Send typing indicator
+    broadcastToSession(body.sessionId, { type: 'typing', data: { isTyping: true } });
+    
+    // Process agent async (fire and forget - no await)
+    callOpenClawAgent(body.content).then((response) => {
       const assistantMsg: WebchatMessage = {
         id: generateId(),
         sessionId: body.sessionId,
@@ -245,18 +242,17 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       };
       queue.push(assistantMsg);
       messageQueues.set(body.sessionId, queue);
-      
       broadcastToSession(body.sessionId, { type: 'message', data: assistantMsg });
       broadcastToSession(body.sessionId, { type: 'typing', data: { isTyping: false } });
-      
       console.log(`[RESP] ${response.substring(0, 50)}...`);
-    } catch (err) {
+    }).catch((err) => {
       console.error('[ERROR]', err);
       broadcastToSession(body.sessionId, { 
         type: 'error', 
-        data: { message: err instanceof Error ? err.message : 'Unknown error' } 
+        data: { message: err.message || 'Unknown error' } 
       });
-    }
+      broadcastToSession(body.sessionId, { type: 'typing', data: { isTyping: false } });
+    });
     return;
   }
   
