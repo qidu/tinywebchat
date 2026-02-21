@@ -8,6 +8,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "server": "npx tsx server/index.ts",
+    "openclaw": "npx tsx server/openclaw.ts",
     "start": "npx tsx server/index.ts",
     "test": "vitest",
     "lint": "eslint src/"
