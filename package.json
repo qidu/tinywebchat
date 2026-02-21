@@ -1,0 +1,32 @@
+{
+  "name": "tinywebchat",
+  "version": "1.0.0",
+  "description": "Lightweight webchat channel for OpenClaw - H5 & WeChat mini-program support",
+  "main": "src/channels/plugins/webchat/index.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "lint": "eslint src/"
+  },
+  "keywords": [
+    "openclaw",
+    "webchat",
+    "channel",
+    "wechat",
+    "mini-program",
+    "h5"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
