@@ -7,6 +7,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "server": "npx tsx server/index.ts",
+    "start": "npx tsx server/index.ts",
     "test": "vitest",
     "lint": "eslint src/"
   },
