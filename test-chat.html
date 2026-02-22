@@ -101,16 +101,31 @@
       border-top: 1px solid #e0e0e0;
       display: flex;
       gap: 8px;
+      align-items: flex-end;
     }
-    #input-area input {
+    #input-area textarea {
       flex: 1;
       padding: 12px;
       border: 1px solid #e0e0e0;
       border-radius: 20px;
       font-size: 14px;
       outline: none;
+      resize: none;
+      min-height: 44px;
+      max-height: 200px;
+      font-family: inherit;
+      line-height: 1.4;
     }
-    #input-area input:focus { border-color: #0066cc; }
+    #input-area textarea:focus { border-color: #25d366; }
+    
+    /* Blinking dots animation */
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0.3; }
+    }
+    #pending-msg .bubble {
+      animation: blink 1s infinite;
+    }
     #input-area button {
       width: 44px;
       height: 44px;
@@ -193,7 +208,7 @@
     <div id="messages"></div>
     <div class="typing" id="typing">🤖 Assistant is typing...</div>
     <div id="input-area">
-      <input type="text" id="msgInput" placeholder="Type a message..." onkeypress="handleKey(event)">
+      <textarea id="msgInput" placeholder="Type a message..." rows="1"></textarea>
       <button id="sendBtn" onclick="sendMessage()" disabled>➤</button>
     </div>
   </div>
@@ -279,6 +294,7 @@
       if (!content || !sessionId) return;
       
       input.value = '';
+      input.style.height = '44px'; // Reset height
       updateSendButton();
       
       // Add user message immediately
@@ -354,14 +370,30 @@
       btn.disabled = !input.value.trim() || !sessionId;
     }
 
-    function handleKey(e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
+    document.getElementById('msgInput').addEventListener('input', updateSendButton);
+    
+    // Auto-resize textarea
+    const msgInput = document.getElementById('msgInput');
+    msgInput.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+    });
+    
+    // Enter for new line, Ctrl+Enter to send
+    msgInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        // Just Enter - insert new line (default behavior for textarea)
+        // Auto-resize after adding new line
+        setTimeout(() => {
+          this.style.height = 'auto';
+          this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+        }, 0);
+      } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        // Ctrl/Cmd + Enter - send message
         e.preventDefault();
         sendMessage();
       }
-    }
-
-    document.getElementById('msgInput').addEventListener('input', updateSendButton);
+    });
 
     function escapeHtml(text) {
       const div = document.createElement('div');
