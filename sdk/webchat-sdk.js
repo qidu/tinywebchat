@@ -27,6 +27,7 @@
     socketTask: null,
     messageHandlers: [],
     connected: false,
+    status: 'ready', // 'ready', 'connected', 'disconnected', 'error'
   };
 
   /**
@@ -48,6 +49,53 @@
       }
     } catch (e) {
       console.warn('Failed to restore session:', e);
+    }
+  }
+
+  /**
+   * Get status icon
+   */
+  function getStatusIcon() {
+    switch (state.status) {
+      case 'connected': return '🟢';
+      case 'disconnected': return '🟠';
+      case 'error': return '🔴';
+      case 'ready':
+      default: return '⚪';
+    }
+  }
+
+  /**
+   * Get status text
+   */
+  function getStatusText() {
+    switch (state.status) {
+      case 'connected': return 'Connected';
+      case 'disconnected': return 'Disconnected';
+      case 'error': return 'Error';
+      case 'ready': return 'Ready - no active session';
+      default: return 'Unknown';
+    }
+  }
+
+  /**
+   * Set status
+   */
+  function setStatus(status) {
+    state.status = status;
+    notifyStatusChange();
+  }
+
+  /**
+   * Notify status change
+   */
+  function notifyStatusChange() {
+    for (const handler of state.messageHandlers) {
+      try {
+        handler({ type: 'status', data: { status: state.status, icon: getStatusIcon(), text: getStatusText() } });
+      } catch (e) {
+        console.error('[WebChat] Status handler error:', e);
+      }
     }
   }
 
@@ -108,6 +156,7 @@
    * @returns {Promise<Object>} Session info
    */
   async function startSession() {
+    setStatus('ready');
     const data = await request('POST', '/sessions');
     
     state.sessionId = data.id;
@@ -119,6 +168,7 @@
       wx.setStorageSync('webchat_token', data.token);
     }
     
+    setStatus('connected');
     return data;
   }
 
@@ -174,6 +224,7 @@
       
       state.socketTask.onOpen(() => {
         state.connected = true;
+        setStatus('connected');
         console.log('[WebChat] Connected to events');
       });
       
@@ -188,12 +239,14 @@
       
       state.socketTask.onClose(() => {
         state.connected = false;
+        setStatus('disconnected');
         console.log('[WebChat] Disconnected from events');
       });
       
       state.socketTask.onError((err) => {
         console.error('[WebChat] Socket error:', err);
         state.connected = false;
+        setStatus('error');
       });
     }
   }
@@ -208,6 +261,7 @@
       }
       state.socketTask = null;
       state.connected = false;
+      setStatus('disconnected');
     }
   }
 
@@ -265,6 +319,7 @@
     
     state.sessionId = null;
     state.token = null;
+    setStatus('ready');
     
     if (isWeChat) {
       wx.removeStorageSync('webchat_session_id');
@@ -280,6 +335,9 @@
       sessionId: state.sessionId,
       token: state.token,
       connected: state.connected,
+      status: state.status,
+      statusIcon: getStatusIcon(),
+      statusText: getStatusText(),
     };
   }
 
@@ -297,6 +355,9 @@
     hasSession,
     clearSession,
     getSession,
+    getStatusIcon,
+    getStatusText,
+    setStatus,
     CONFIG,
   };
 

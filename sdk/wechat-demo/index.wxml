@@ -1,16 +1,24 @@
 <!-- wechat-demo/index.wxml -->
 <view class="container">
+  <!-- Header -->
+  <view class="header">
+    <text class="title">🤖 TinyWebChat</text>
+    <view class="header-right">
+      <text class="status" title="{{statusText}}">{{statusIcon}}</text>
+      <button wx:if="{{sessionId}}" class="new-session-btn" bindtap="newSession" title="New Session">+</button>
+    </view>
+  </view>
+
   <!-- Login Page -->
   <view wx:if="{{!sessionId}}" class="login">
-    <button bindtap="startChat">Start Chat</button>
+    <button class="start-btn" bindtap="startChat">Start Chat</button>
   </view>
 
   <!-- Chat Page -->
   <view wx:else class="chat">
-    <scroll-view scroll-y class="messages">
+    <scroll-view scroll-y class="messages" scroll-into-view="msg-{{messages.length-1}}">
       <block wx:for="{{messages}}" wx:key="index">
-        <view class="message {{item.role}}">
-          <view class="avatar">{{item.role === 'assistant' ? '🤖' : '👤'}}</view>
+        <view id="msg-{{index}}" class="message {{item.role}} {{item.isPending ? 'pending' : ''}}">
           <view class="bubble">{{item.content}}</view>
         </view>
       </block>
@@ -18,13 +26,16 @@
     </scroll-view>
 
     <view class="input-area">
-      <input 
+      <textarea 
+        class="msg-input"
         value="{{inputValue}}" 
         placeholder="Type a message..." 
         bindinput="onInput"
         bindconfirm="sendMessage"
+        auto-height
+        maxlength="-1"
       />
-      <button size="mini" bindtap="sendMessage">Send</button>
+      <button class="send-btn" bindtap="sendMessage" disabled="{{!inputValue || !sessionId}}">➤</button>
     </view>
   </view>
 </view>
