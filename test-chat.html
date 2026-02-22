@@ -135,7 +135,10 @@
 <body>
   <header>
     <h1>🤖 TinyWebChat</h1>
-    <span class="status" id="status">Ready</span>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span class="status" id="status">Ready</span>
+      <button id="newSessionBtn" onclick="newSession()" style="padding: 6px 12px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); border-radius: 4px; font-size: 16px; cursor: pointer; display: none;" title="New Session">+</button>
+    </div>
   </header>
   
   <div id="login">
@@ -156,6 +159,7 @@
     let sessionId = null;
     let token = null;
     let eventSource = null;
+    let pendingMsgId = null;
 
     function setStatus(msg) {
       document.getElementById('status').textContent = msg;
@@ -181,7 +185,8 @@
         // Show chat
         document.getElementById('login').style.display = 'none';
         document.getElementById('chat').classList.add('active');
-        
+        document.getElementById('newSessionBtn').style.display = 'block';
+
         setStatus('Connected');
         connectSSE();
         
@@ -195,20 +200,22 @@
     }
 
     function connectSSE() {
-      eventSource = new EventSource(`${API}/events?sessionId=${sessionId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      // Pass token as query param since EventSource doesn't support custom headers
+      eventSource = new EventSource(`${API}/events?sessionId=${sessionId}&token=${token}`);
       
       eventSource.addEventListener('connected', (e) => {
         console.log('SSE Connected');
       });
       
       eventSource.addEventListener('message', (e) => {
-        const data = JSON.parse(e.data);
-        if (data.role === 'user') return; // Skip our own messages
-        
+        const event = JSON.parse(e.data);
+        const msg = event.data || event; // Handle both wrapped and unwrapped
+        if (msg.role === 'user') return; // Skip our own messages
+        if (!msg.content || msg.content === 'null') return; // Skip null/empty responses
+
         hideTyping();
-        addMessage('assistant', data.content);
+        replacePendingMessage(msg.content);
+        pendingMsgId = null;
       });
       
       eventSource.addEventListener('typing', (e) => {
@@ -232,6 +239,8 @@
       
       // Add user message immediately
       addMessage('user', content);
+      // Add pending assistant message
+      pendingMsgId = addPendingMessage();
       
       try {
         const res = await fetch(`${API}/send`, {
@@ -264,6 +273,31 @@
       msgs.scrollTop = msgs.scrollHeight;
     }
 
+    function addPendingMessage() {
+      const msgs = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.id = 'pending-msg';
+      div.className = 'message assistant';
+      div.innerHTML = `
+        <div class="avatar">🤖</div>
+        <div class="bubble">...</div>
+      `;
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+      return div.id;
+    }
+
+    function replacePendingMessage(content) {
+      const pending = document.getElementById('pending-msg');
+      if (pending) {
+        pending.id = ''; // Remove ID so it's no longer "pending"
+        pending.querySelector('.bubble').textContent = content;
+      } else {
+        // Fallback: add as new message if pending not found
+        addMessage('assistant', content);
+      }
+    }
+
     function showTyping() {
       document.getElementById('typing').classList.add('show');
     }
@@ -292,6 +326,31 @@
       return div.innerHTML;
     }
 
+    function newSession() {
+      // Close existing SSE connection
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+      // Clear session
+      sessionId = null;
+      token = null;
+      pendingMsgId = null;
+      localStorage.removeItem('twc_session');
+      localStorage.removeItem('twc_token');
+      // Clear messages
+      document.getElementById('messages').innerHTML = '';
+      // Hide + button temporarily
+      document.getElementById('newSessionBtn').style.display = 'none';
+      // Immediately start new chat
+      startChat();
+    }
+
+    // Show + button when in chat
+    function showNewSessionButton() {
+      document.getElementById('newSessionBtn').style.display = 'block';
+    }
+
     // Check for existing session
     const savedSession = localStorage.getItem('twc_session');
     const savedToken = localStorage.getItem('twc_token');
@@ -300,6 +359,7 @@
       token = savedToken;
       document.getElementById('login').style.display = 'none';
       document.getElementById('chat').classList.add('active');
+      showNewSessionButton();
       connectSSE();
     }
   </script>

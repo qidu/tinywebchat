@@ -90,15 +90,16 @@ function validateToken(sessionId: string, token: string): boolean {
 async function callOpenClawAgent(message: string, sessionKey: string = 'main'): Promise<string> {
   return new Promise((resolve, reject) => {
     // Use openclaw CLI to send a message
-    const cli = spawn('npx', [
-      'openclaw',
+    // Use shell: true to access PATH, or call openclaw directly
+    const cli = spawn('openclaw', [
       'agent',
       '--message', message,
       '--session-id', sessionKey,
       '--json'
     ], {
-      cwd: '/home/teric/dev/bot/openclaw/workspace-abc',
-      stdio: ['pipe', 'pipe', 'pipe']
+      cwd: process.env.OPENCLAW_WORKSPACE || '/Users/chris/openclaw',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      shell: true
     });
 
     let stdout = '';
@@ -260,6 +261,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     res.statusCode = 204;
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.end();
     return;
   }
@@ -363,10 +367,13 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   
   if (path === '/v1/webchat/events' && req.method === 'GET') {
     const sessionId = url.searchParams.get('sessionId');
-    const token = getAuthToken(req);
+    // Support token in query param (for EventSource) or Authorization header
+    const token = url.searchParams.get('token') || getAuthToken(req);
     
     if (!sessionId || !token || !validateToken(sessionId, token)) {
-      sendJson(res, 401, { error: 'Unauthorized' });
+      res.statusCode = 401;
+      res.setHeader('Content-Type', 'text/plain');
+      res.end('Unauthorized');
       return;
     }
     
