@@ -9,7 +9,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 
-const PORT = 3002;
+const PORT = 3008;
 
 // In-memory storage
 const sessions = new Map<string, WebchatSession>();
