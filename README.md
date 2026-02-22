@@ -166,6 +166,37 @@ tinywebchat/
 | `PORT` | 3002 | Server port |
 | `PROCESSING_MODE` | queue | Message processing: queue or batch |
 
+## Session Architecture
+
+TinyWebChat has **two layers of sessions**:
+
+```
+┌─────────────────────────────────────────────┐
+│  TinyWebChat Session (Browser/WeChat)       │  ← Per-tab, in-memory
+│  - Token auth                               │     Lost on page refresh
+│  - Message history                          │
+└─────────────────────────────────────────────┘
+              │
+              │ HTTP/SSE
+              ▼
+┌─────────────────────────────────────────────┐
+│  OpenClaw Session (Agent)                   │  ← Persistent, shared
+│  - Conversation context                     │     Currently uses 'main'
+│  - Tool access                              │     (all tabs share context)
+└─────────────────────────────────────────────┘
+```
+
+### Key Differences
+
+| Aspect | TinyWebChat Session | OpenClaw Session |
+|--------|--------------------|------------------|
+| **Scope** | Per browser tab / WeChat page | Shared across all tabs |
+| **Lifetime** | Until page refresh/close | Persistent in OpenClaw |
+| **Storage** | In-memory Map | OpenClaw session storage |
+| **Purpose** | Web connection, message queue | Agent context, memory |
+
+**Note:** Currently all TinyWebChat sessions connect to a single OpenClaw session (`main`). This means multiple browser tabs share the same agent context. For isolation, each TinyWebChat session would need a unique OpenClaw session ID.
+
 ## Comparison
 
 | Feature | Current Control UI | TinyWebChat |
