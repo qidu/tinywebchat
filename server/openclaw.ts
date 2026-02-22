@@ -89,17 +89,16 @@ function validateToken(sessionId: string, token: string): boolean {
 // Call OpenClaw agent via CLI
 async function callOpenClawAgent(message: string, sessionKey: string = 'main'): Promise<string> {
   return new Promise((resolve, reject) => {
-    // Use openclaw CLI to send a message
-    // Use shell: true to access PATH, or call openclaw directly
+    // Use openclaw CLI with -m flag for message
     const cli = spawn('openclaw', [
       'agent',
-      '--message', message,
+      '-m', message,
       '--session-id', sessionKey,
       '--json'
     ], {
       cwd: process.env.OPENCLAW_WORKSPACE || '/Users/chris/openclaw',
       stdio: ['pipe', 'pipe', 'pipe'],
-      shell: true
+      shell: false,
     });
 
     let stdout = '';
@@ -126,6 +125,8 @@ async function callOpenClawAgent(message: string, sessionKey: string = 'main'): 
           resolve(stdout.substring(0, 500));
         }
       } else {
+        console.error('[OpenClaw] stderr:', stderr);
+        console.error('[OpenClaw] stdout:', stdout);
         reject(new Error(stderr || `Process exited with code ${code}`));
       }
     });
@@ -365,7 +366,24 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
   
-  if (path === '/v1/webchat/events' && req.method === 'GET') {
+  if (path === '/v1/webchat/events') {
+    // Handle CORS preflight for EventSource
+    if (req.method === 'OPTIONS') {
+      res.statusCode = 204;
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+      res.end();
+      return;
+    }
+    
+    if (req.method !== 'GET') {
+      res.statusCode = 405;
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.end('Method not allowed');
+      return;
+    }
+    
     const sessionId = url.searchParams.get('sessionId');
     // Support token in query param (for EventSource) or Authorization header
     const token = url.searchParams.get('token') || getAuthToken(req);
@@ -373,6 +391,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     if (!sessionId || !token || !validateToken(sessionId, token)) {
       res.statusCode = 401;
       res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('Access-Control-Allow-Origin', '*');
       res.end('Unauthorized');
       return;
     }
