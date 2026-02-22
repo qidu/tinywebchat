@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TinyWebChat - Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { 
@@ -128,6 +129,51 @@
       color: #333 !important;
       border: 1px solid #ddd !important;
     }
+    
+    /* Markdown styles */
+    .bubble h1, .bubble h2, .bubble h3, .bubble h4 {
+      margin: 8px 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .bubble p { margin: 6px 0; }
+    .bubble ul, .bubble ol { margin: 6px 0; padding-left: 20px; }
+    .bubble li { margin: 3px 0; }
+    .bubble code {
+      background: rgba(0,0,0,0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    .bubble pre {
+      background: rgba(0,0,0,0.08);
+      padding: 10px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 8px 0;
+    }
+    .bubble pre code {
+      background: none;
+      padding: 0;
+    }
+    .bubble blockquote {
+      border-left: 3px solid #ccc;
+      margin: 8px 0;
+      padding-left: 12px;
+      color: #666;
+    }
+    .bubble a { color: #0066cc; }
+    .bubble table {
+      border-collapse: collapse;
+      margin: 8px 0;
+      font-size: 13px;
+    }
+    .bubble th, .bubble td {
+      border: 1px solid #ddd;
+      padding: 6px 10px;
+    }
+    .bubble th { background: rgba(0,0,0,0.05); }
   </style>
 </head>
 <body>
@@ -263,10 +309,10 @@
       const msgs = document.getElementById('messages');
       const div = document.createElement('div');
       div.className = `message ${role}`;
-      div.innerHTML = `
-        <div class="avatar">${role === 'assistant' ? '🤖' : '👤'}</div>
-        <div class="bubble">${escapeHtml(content)}</div>
-      `;
+      const bubbleContent = role === 'assistant' 
+        ? marked.parse(content) 
+        : escapeHtml(content);
+      div.innerHTML = `<div class="bubble">${bubbleContent}</div>`;
       msgs.appendChild(div);
       msgs.scrollTop = msgs.scrollHeight;
     }
@@ -277,7 +323,6 @@
       div.id = 'pending-msg';
       div.className = 'message assistant';
       div.innerHTML = `
-        <div class="avatar">🤖</div>
         <div class="bubble">...</div>
       `;
       msgs.appendChild(div);
@@ -289,7 +334,7 @@
       const pending = document.getElementById('pending-msg');
       if (pending) {
         pending.id = ''; // Remove ID so it's no longer "pending"
-        pending.querySelector('.bubble').textContent = content;
+        pending.querySelector('.bubble').innerHTML = marked.parse(content);
       } else {
         // Fallback: add as new message if pending not found
         addMessage('assistant', content);
