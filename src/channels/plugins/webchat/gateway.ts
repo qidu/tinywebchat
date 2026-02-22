@@ -296,13 +296,13 @@ async function sendViaCLI(
   return new Promise((resolve, reject) => {
     const cli = spawn('openclaw', [
       'agent',
-      '--message', message,
+      '-m', message,
       '--session-id', sessionKey,
       '--json'
     ], {
       cwd: config.workspacePath || process.cwd(),
       stdio: ['pipe', 'pipe', 'pipe'],
-      shell: true,
+      shell: false,
     });
 
     let stdout = '';
