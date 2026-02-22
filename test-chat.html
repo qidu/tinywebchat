@@ -220,8 +220,24 @@
     let eventSource = null;
     let pendingMsgId = null;
 
-    function setStatus(msg) {
-      document.getElementById('status').textContent = msg;
+    function setStatus(status) {
+      const el = document.getElementById('status');
+      if (status === 'Connected') {
+        el.innerHTML = '🟢';
+        el.title = 'Connected';
+      } else if (status === 'Disconnected') {
+        el.innerHTML = '🟠';
+        el.title = 'Disconnected';
+      } else if (status === 'Ready') {
+        el.innerHTML = '⚪';
+        el.title = 'Ready';
+      } else if (status === 'error') {
+        el.innerHTML = '🔴';
+        el.title = 'Error';
+      } else {
+        el.textContent = status;
+        el.title = status;
+      }
     }
 
     async function startChat() {
@@ -252,7 +268,8 @@
         // Add welcome message
         addMessage('assistant', 'Hello! How can I help you today?');
       } catch (err) {
-        setStatus('Error: ' + err.message);
+        setStatus('error');
+        document.getElementById('status').title = 'Error: ' + err.message;
         btn.disabled = false;
         btn.textContent = 'Start Chat';
       }
@@ -284,7 +301,8 @@
       
       eventSource.addEventListener('error', (e) => {
         console.error('SSE Error', e);
-        setStatus('Disconnected');
+        setStatus('error');
+        document.getElementById('status').title = 'Connection error - check server';
       });
     }
 
