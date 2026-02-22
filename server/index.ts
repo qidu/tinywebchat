@@ -10,7 +10,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import crypto from 'node:crypto';
 
-const PORT = 3001;
+const PORT = 3008;
 
 // In-memory storage (would use OpenClaw session storage in production)
 const sessions = new Map<string, WebchatSession>();
