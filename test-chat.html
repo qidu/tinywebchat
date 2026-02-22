@@ -16,15 +16,17 @@
     
     /* Header */
     header {
-      background: #0066cc;
-      color: white;
+      background: #ffffff;
+      color: #333;
       padding: 12px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      border-bottom: 1px solid #e0e0e0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    header h1 { font-size: 18px; }
-    .status { font-size: 12px; opacity: 0.8; }
+    header h1 { font-size: 18px; font-weight: 500; }
+    .status { font-size: 12px; color: #666; }
     
     /* Login Screen */
     #login {
@@ -37,12 +39,13 @@
     }
     #login button {
       padding: 14px 28px;
-      background: #0066cc;
+      background: #25d366;
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: 24px;
       font-size: 16px;
       cursor: pointer;
+      box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
     }
     #login button:disabled { background: #999; }
     
@@ -69,28 +72,16 @@
       max-width: 80%;
     }
     .message.user { align-self: flex-end; flex-direction: row-reverse; }
-    .message .avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: #0066cc;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      flex-shrink: 0;
-    }
-    .message.user .avatar { background: #28a745; }
+    .message .avatar { display: none; }
     .message .bubble {
       padding: 10px 14px;
-      border-radius: 12px;
-      background: white;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border-radius: 18px;
+      background: #f0f0f0;
+      color: #333;
     }
     .message.user .bubble {
-      background: #0066cc;
-      color: white;
+      background: #dcf8c6;
+      color: #333;
     }
     
     /* Typing */
@@ -123,13 +114,20 @@
       width: 44px;
       height: 44px;
       border: none;
-      background: #0066cc;
+      background: #25d366;
       color: white;
       border-radius: 50%;
       cursor: pointer;
       font-size: 18px;
     }
     #input-area button:disabled { background: #ccc; }
+    
+    /* New session button */
+    #newSessionBtn {
+      background: #f0f0f0 !important;
+      color: #333 !important;
+      border: 1px solid #ddd !important;
+    }
   </style>
 </head>
 <body>
