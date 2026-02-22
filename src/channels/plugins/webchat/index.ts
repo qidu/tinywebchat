@@ -1,106 +1,88 @@
 /**
  * TinyWebChat Channel Plugin - Entry Point
  * 
- * This is the main plugin file that integrates with OpenClaw's
- * channel plugin system.
+ * Supports two modes:
+ * - CLI mode (default): Spawns openclaw agent process (standalone server)
+ * - Plugin mode: Uses OpenClaw's internal agent API (integrated)
  */
 
-import type { ChannelPlugin, ChannelPluginGateway, ChannelPluginConfig } from '../types.plugin.js';
+import type { ChannelPlugin } from '../types.plugin.js';
 import type { WebchatConfig } from './types.js';
 import { normalizeWebchatConfig, WEBCHAT_CONFIG_SCHEMA } from './config.js';
 import { createWebchatGateway } from './gateway.js';
-import { createHttpHandlers } from './http.js';
+import { createHttpHandlers, createStandaloneServer, broadcastToSession } from './http.js';
 
 /**
  * Webchat channel plugin for OpenClaw
  */
 export const webchatPlugin: ChannelPlugin = {
-  /** Unique plugin identifier */
-  id: 'webchat',
-  
-  /** Human-readable name */
+  id: 'tinywebchat',
   name: 'TinyWebChat',
-  
-  /** Plugin version */
   version: '1.0.0',
-  
-  /** Config schema for validation */
   configSchema: WEBCHAT_CONFIG_SCHEMA,
   
   /**
    * Initialize the plugin with configuration
    */
-  async init(config: ChannelPluginConfig): Promise<void> {
+  async init(config: Record<string, unknown>, context?: any): Promise<void> {
     const webchatConfig = normalizeWebchatConfig(config);
     
     if (!webchatConfig.enabled) {
-      console.log('[webchat] Plugin disabled');
+      console.log('[tinywebchat] Plugin disabled');
       return;
     }
     
-    console.log('[webchat] Initializing TinyWebChat plugin...');
-    console.log(`[webchat] Session timeout: ${webchatConfig.sessionTimeout}s`);
-    console.log(`[webchat] Max history: ${webchatConfig.maxHistory}`);
-    console.log(`[webchat] WeChat MP: ${webchatConfig.wechatMpEnabled ? 'enabled' : 'disabled'}`);
+    console.log('[tinywebchat] Initializing...');
+    console.log(`[tinywebchat] Agent mode: ${webchatConfig.agentMode}`);
+    console.log(`[tinywebchat] Processing: ${webchatConfig.processingMode}`);
     
-    // Initialize gateway
-    const gateway = createWebchatGateway({
-      sendToAgent: async (sessionKey, message, channel) => {
-        // This would integrate with OpenClaw's agent system
-        // For now, return a placeholder
-        return `msg_${Date.now()}`;
-      },
-      getSession: async (sessionKey) => null,
-      listSessions: async (channel) => [],
-      getMessageHistory: async (sessionKey, limit) => [],
-      emitEvent: (sessionId, event) => {
-        // Would emit via SSE
-      },
-    });
-    
-    // Create HTTP handlers
-    const handlers = createHttpHandlers(webchatConfig, gateway);
-    
-    // Register with OpenClaw's gateway
-    // This is where we'd hook into the HTTP server
-    console.log('[webchat] Plugin initialized');
+    if (webchatConfig.agentMode === 'cli') {
+      // CLI mode: Start standalone HTTP server that spawns openclaw process
+      console.log('[tinywebchat] Starting standalone server (CLI mode)...');
+      await createStandaloneServer(webchatConfig);
+    } else {
+      // Plugin mode: Integrate with OpenClaw's internal systems
+      console.log('[tinywebchat] Registering as OpenClaw plugin...');
+      await initPluginMode(webchatConfig, context);
+    }
   },
   
   /**
    * Get gateway methods exposed by this plugin
    */
-  getGatewayMethods(): ChannelPluginGateway['gatewayMethods'] {
+  getGatewayMethods(): string[] {
     return [
-      'webchat.send',
-      'webchat.createSession',
-      'webchat.getMessages',
-      'webchat.validateToken',
+      'tinywebchat.send',
+      'tinywebchat.createSession',
+      'tinywebchat.getMessages',
+      'tinywebchat.validateToken',
     ];
   },
   
   /**
-   * Get HTTP handlers for custom routes
+   * Get HTTP handlers for custom routes (plugin mode)
    */
-  getHttpHandlers() {
-    return {
-      // Would return actual HTTP handlers
-    };
+  getHttpHandlers(config: Record<string, unknown>) {
+    const webchatConfig = normalizeWebchatConfig(config);
+    const gateway = createWebchatGateway({ config: webchatConfig });
+    return createHttpHandlers(webchatConfig, gateway);
   },
   
   /**
-   * Handle incoming message
+   * Handle incoming message (from OpenClaw to webchat)
    */
   async handleInboundMessage(message: {
     from: string;
     content: string;
     attachments?: unknown[];
   }): Promise<{ success: boolean; messageId?: string }> {
-    // Process incoming message from webchat
+    // Process incoming message from agent to webchat user
+    console.log('[tinywebchat] Inbound message:', message);
     return { success: true };
   },
   
   /**
-   * Send outbound message
+   * Send outbound message (from webchat to OpenClaw)
    */
   async handleOutboundMessage(options: {
     to: string;
@@ -108,6 +90,7 @@ export const webchatPlugin: ChannelPlugin = {
     attachments?: unknown[];
   }): Promise<{ success: boolean; messageId?: string }> {
     // Send message via webchat
+    console.log('[tinywebchat] Outbound message:', options);
     return { success: true };
   },
   
@@ -115,23 +98,89 @@ export const webchatPlugin: ChannelPlugin = {
    * Cleanup on shutdown
    */
   async shutdown(): Promise<void> {
-    console.log('[webchat] Shutting down...');
+    console.log('[tinywebchat] Shutting down...');
     // Clean up resources
   },
 };
 
 /**
- * Default configuration
+ * Initialize in plugin mode - integrate with OpenClaw internals
  */
-export const DEFAULT_WEBCONFIG: WebchatConfig = {
-  enabled: true,
-  sessionTimeout: 3600,
-  maxHistory: 100,
-  wechatMpEnabled: true,
-  allowedOrigins: ['*'],
-  rateLimit: 60,
-  offlineQueue: true,
-  maxOfflineQueue: 50,
-};
+async function initPluginMode(config: WebchatConfig, context: any) {
+  if (!context) {
+    console.warn('[tinywebchat] No context provided, falling back to CLI mode');
+    await createStandaloneServer(config);
+    return;
+  }
+  
+  // Create gateway that uses OpenClaw's internal agent API
+  const channelContext = {
+    agent: context.agent || {
+      submit: async (params: any) => {
+        console.warn('[tinywebchat] No agent context available');
+        return { content: 'Agent not available' };
+      }
+    },
+    sessions: context.sessions || {
+      getOrCreate: async (key: string) => ({ id: key })
+    },
+  };
+  
+  const gateway = createWebchatGateway({
+    config,
+    channelContext,
+  });
+  
+  // Register HTTP routes with OpenClaw's gateway
+  if (context.http && context.http.register) {
+    const handlers = createHttpHandlers(config, gateway);
+    
+    context.http.register({
+      path: '/v1/webchat/sessions',
+      method: 'POST',
+      handler: handlers.createSession,
+    });
+    
+    context.http.register({
+      path: '/v1/webchat/sessions',
+      method: 'GET',
+      handler: handlers.getSessions,
+    });
+    
+    context.http.register({
+      path: '/v1/webchat/sessions/:id/messages',
+      method: 'GET',
+      handler: (req: any, res: any, params: any) => 
+        handlers.getSessionMessages(req, res, params.id),
+    });
+    
+    context.http.register({
+      path: '/v1/webchat/send',
+      method: 'POST',
+      handler: handlers.sendMessage,
+    });
+    
+    context.http.register({
+      path: '/v1/webchat/events',
+      method: 'GET',
+      handler: handlers.sseEvents,
+    });
+    
+    context.http.register({
+      path: '/health',
+      method: 'GET',
+      handler: handlers.health,
+    });
+    
+    console.log('[tinywebchat] HTTP routes registered with OpenClaw');
+  }
+  
+  console.log('[tinywebchat] Plugin mode initialized');
+}
+
+// Export for direct use
+export { createWebchatGateway, createHttpHandlers, createStandaloneServer };
+export { normalizeWebchatConfig, WEBCHAT_CONFIG_SCHEMA };
+export type { WebchatConfig };
 
 export default webchatPlugin;

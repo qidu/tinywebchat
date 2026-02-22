@@ -1,0 +1,48 @@
+# TinyWebChat - OpenClaw Channel Plugin Manifest
+id: tinywebchat
+name: TinyWebChat
+version: 1.0.0
+description: Lightweight webchat channel for H5 browsers and WeChat mini-programs
+
+entry: dist/channels/plugins/webchat/index.js
+
+config:
+  schema:
+    type: object
+    properties:
+      enabled:
+        type: boolean
+        default: true
+      port:
+        type: number
+        default: 3008
+      agentMode:
+        type: string
+        enum: [cli, plugin]
+        default: cli
+        description: How to communicate with OpenClaw agent - 'cli' spawns process, 'plugin' uses internal API
+      sessionTimeout:
+        type: number
+        default: 3600
+      maxHistory:
+        type: number
+        default: 100
+      processingMode:
+        type: string
+        enum: [queue, batch]
+        default: queue
+      wechatMpEnabled:
+        type: boolean
+        default: true
+      allowedOrigins:
+        type: array
+        default: ['*']
+      rateLimit:
+        type: number
+        default: 60
+      
+  uiHints:
+    agentMode:
+      label: Agent Communication Mode
+      help: CLI mode spawns openclaw process (standalone), Plugin mode uses OpenClaw internal API (integrated)
+      advanced: true

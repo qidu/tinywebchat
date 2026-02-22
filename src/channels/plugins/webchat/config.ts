@@ -16,6 +16,29 @@ export const WEBCHAT_CONFIG_SCHEMA = {
       type: 'string',
       description: 'Base URL for the channel (defaults to gateway URL)',
     },
+    port: {
+      type: 'number',
+      default: 3008,
+      minimum: 1024,
+      maximum: 65535,
+      description: 'Server port for standalone mode',
+    },
+    agentMode: {
+      type: 'string',
+      enum: ['cli', 'plugin'],
+      default: 'cli',
+      description: 'Agent communication mode: cli (spawn process) or plugin (internal API)',
+    },
+    workspacePath: {
+      type: 'string',
+      description: 'Workspace path for CLI mode (defaults to process.cwd())',
+    },
+    processingMode: {
+      type: 'string',
+      enum: ['queue', 'batch'],
+      default: 'queue',
+      description: 'Message processing mode: queue (one at a time) or batch (grouped)',
+    },
     sessionTimeout: {
       type: 'number',
       default: 3600,
@@ -74,6 +97,10 @@ export function normalizeWebchatConfig(raw: unknown): WebchatConfig {
   return {
     enabled: cfg.enabled !== false,
     baseUrl: typeof cfg.baseUrl === 'string' ? cfg.baseUrl : undefined,
+    port: typeof cfg.port === 'number' ? cfg.port : 3008,
+    agentMode: (cfg.agentMode === 'plugin' ? 'plugin' : 'cli') as 'cli' | 'plugin',
+    workspacePath: typeof cfg.workspacePath === 'string' ? cfg.workspacePath : undefined,
+    processingMode: (cfg.processingMode === 'batch' ? 'batch' : 'queue') as 'queue' | 'batch',
     sessionTimeout: typeof cfg.sessionTimeout === 'number' ? cfg.sessionTimeout : 3600,
     maxHistory: typeof cfg.maxHistory === 'number' ? cfg.maxHistory : 100,
     wechatMpEnabled: cfg.wechatMpEnabled !== false,
