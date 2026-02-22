@@ -229,7 +229,7 @@
         el.innerHTML = '🟠';
         el.title = 'Disconnected';
       } else if (status === 'Ready') {
-        el.innerHTML = '🌈';
+        el.innerHTML = '⚪';
         el.title = 'Ready - no active session';
       } else if (status === 'error') {
         el.innerHTML = '🔴';
@@ -444,6 +444,9 @@
       document.getElementById('newSessionBtn').style.display = 'block';
     }
 
+    // Set initial status
+    setStatus('Ready');
+    
     // Check for existing session
     const savedSession = localStorage.getItem('twc_session');
     const savedToken = localStorage.getItem('twc_token');
