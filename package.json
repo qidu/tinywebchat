@@ -2,16 +2,25 @@
   "name": "tinywebchat",
   "version": "1.0.0",
   "description": "Lightweight webchat channel for OpenClaw - H5 & WeChat mini-program support",
-  "main": "src/channels/plugins/webchat/index.ts",
+  "main": "dist/channels/plugins/webchat/index.js",
   "type": "module",
   "scripts": {
     "build": "tsc",
+    "build:plugin": "tsc && cp openclaw-plugin.yaml dist/",
+    "build:watch": "tsc --watch",
     "dev": "tsc --watch",
     "server": "npx tsx server/index.ts",
     "openclaw": "npx tsx server/openclaw.ts",
     "start": "npx tsx server/index.ts",
-    "test": "vitest",
-    "lint": "eslint src/"
+    "start:cli": "AGENT_MODE=cli npx tsx src/channels/plugins/webchat/index.ts",
+    "start:plugin": "AGENT_MODE=plugin npx tsx src/channels/plugins/webchat/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "clean": "rm -rf dist/",
+    "prepare": "npm run build"
   },
   "keywords": [
     "openclaw",
@@ -19,12 +28,33 @@
     "channel",
     "wechat",
     "mini-program",
-    "h5"
+    "h5",
+    "chat",
+    "ai",
+    "agent"
   ],
   "author": "",
   "license": "MIT",
+  "files": [
+    "dist/",
+    "sdk/",
+    "openclaw-plugin.yaml",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/channels/plugins/webchat/index.js",
+      "types": "./dist/channels/plugins/webchat/index.d.ts"
+    },
+    "./sdk": {
+      "import": "./sdk/webchat-sdk.js"
+    }
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
     "tsx": "^4.21.0",
     "typescript": "^5.0.0",
     "vitest": "^1.0.0"

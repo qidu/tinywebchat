@@ -1,0 +1,45 @@
+# TinyWebChat - Docker Compose Example
+# Run TinyWebChat in CLI mode with OpenClaw
+
+version: '3.8'
+
+services:
+  # TinyWebChat standalone server (CLI mode)
+  tinywebchat:
+    build: ..
+    ports:
+      - "3008:3008"
+    environment:
+      - PORT=3008
+      - AGENT_MODE=cli
+      - PROCESSING_MODE=queue
+      - WORKSPACE_PATH=/workspace
+    volumes:
+      # Mount your OpenClaw workspace
+      - ./workspace:/workspace
+    networks:
+      - tinywebchat-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3008/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: Redis for session storage (production)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - tinywebchat-network
+    restart: unless-stopped
+
+networks:
+  tinywebchat-network:
+    driver: bridge
+
+volumes:
+  redis-data:

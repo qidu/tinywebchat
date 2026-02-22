@@ -1,0 +1,54 @@
+# TinyWebChat - OpenClaw Configuration Example
+# Place this in your OpenClaw config directory
+
+channels:
+  tinywebchat:
+    # Enable the channel
+    enabled: true
+    
+    # Operation mode:
+    # - 'cli': Spawns openclaw agent process (standalone, default)
+    # - 'plugin': Uses OpenClaw internal API (integrated)
+    agentMode: plugin
+    
+    # Server port (for standalone mode or plugin HTTP server)
+    port: 3008
+    
+    # Message processing mode:
+    # - 'queue': Process one message at a time per session
+    # - 'batch': Group all queued messages together
+    processingMode: queue
+    
+    # Session timeout in seconds
+    sessionTimeout: 3600
+    
+    # Maximum message history per session
+    maxHistory: 100
+    
+    # Enable WeChat mini-program support
+    wechatMpEnabled: true
+    
+    # WeChat mini-program appId (optional, for advanced features)
+    # wechatMpAppId: wx1234567890abcdef
+    
+    # Allowed CORS origins
+    allowedOrigins:
+      - '*'
+      # - 'https://yourdomain.com'
+      # - 'https://app.yourdomain.com'
+    
+    # Rate limiting: max requests per minute per session
+    rateLimit: 60
+    
+    # Enable offline message queueing
+    offlineQueue: true
+    
+    # Maximum offline message queue size
+    maxOfflineQueue: 50
+    
+    # Workspace path for CLI mode (defaults to OpenClaw workspace)
+    # workspacePath: /path/to/workspace
+
+# Optional: Configure as default channel
+defaults:
+  channel: tinywebchat

@@ -4,83 +4,95 @@
 
 ## Overview
 
-This is a new channel plugin for [OpenClaw](https://github.com/openclaw/openclaw) that provides a lightweight, mobile-first chat interface designed for:
+TinyWebChat is a dual-mode channel plugin for [OpenClaw](https://github.com/openclaw/openclaw) that provides a lightweight, mobile-first chat interface:
 
 - 📱 **H5 Mobile Browsers** - Lightweight web interface
 - 💬 **WeChat Mini-Programs** - Native-like experience in WeChat
 - 🔌 **REST + SSE** - No WebSocket dependency (works in restricted environments)
-
-## Why a New Channel?
-
-OpenClaw already has a "webchat" concept, but it's:
-- **WebSocket-only** - Requires persistent connection (blocked in many environments)
-- **Control UI** - Full-featured admin interface, not user-facing
-- **Internal** - Not exposed as a pluggable channel
-
-This project creates a proper channel plugin that's:
-- ✨ **Lightweight** - <50kb total UI
-- 🔒 **Secure** - Per-session token auth
-- 🌐 **Universal** - Works where WebSockets don't
+- 🔄 **Dual Mode** - Run standalone (CLI) or integrated (Plugin)
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  OpenClaw Gateway                        │
+│                    Two Operation Modes                   │
+├─────────────────────────────────────────────────────────┤
 │                                                          │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐  │
-│  │ WhatsApp    │  │ Telegram    │  │ TinyWebChat     │  │
-│  │ Plugin      │  │ Plugin      │  │ Plugin          │  │
-│  └─────────────┘  └─────────────┘  └─────────────────┘  │
-│         │                │                  │            │
-│         └────────────────┼──────────────────┘            │
-│                          │                               │
-│                   Channel Registry                       │
+│  ┌─────────────────────┐  ┌─────────────────────────┐   │
+│  │   CLI Mode          │  │   Plugin Mode           │   │
+│  │   (Standalone)      │  │   (Integrated)          │   │
+│  │                     │  │                         │   │
+│  │  TinyWebChat        │  │  TinyWebChat            │   │
+│  │  Server ──spawn──►  │  │  Plugin ──internal──►   │   │
+│  │  openclaw agent     │  │  OpenClaw Agent API     │   │
+│  └─────────────────────┘  └─────────────────────────┘   │
+│                                                          │
+│  Use CLI mode for:        Use Plugin mode for:          │
+│  • Quick testing          • Production OpenClaw         │
+│  • Standalone deployment  • Shared agent context        │
+│  • No OpenClaw required   • Centralized management      │
+│                                                          │
 └─────────────────────────────────────────────────────────┘
-                           │
-        ┌──────────────────┼──────────────────┐
-        ▼                  ▼                  ▼
-   ┌─────────┐       ┌──────────┐      ┌────────────┐
-   │ WeChat  │       │  H5 App  │      │ Mini-Prog  │
-   │ Mini-Prog│      │ (Mobile) │      │ (WeChat)   │
-   └─────────┘       └──────────┘      └────────────┘
 ```
 
 ## Quick Start
 
-### Run the Server
+### CLI Mode (Standalone - Default)
+
+Run TinyWebChat as a standalone server that spawns OpenClaw agent processes:
 
 ```bash
-# Clone and run
-cd tinywebchat
-npm run openclaw
+# Install dependencies
+npm install
+
+# Run in CLI mode (default)
+npm run start
 
 # Or with custom port
-PORT=3002 npm run openclaw
+PORT=3008 npm run start
+
+# With batch processing mode
+PROCESSING_MODE=batch npm run start
 ```
 
-### Test with curl
+### Plugin Mode (Integrated)
+
+Run as an OpenClaw plugin for tighter integration:
 
 ```bash
-# Create session
-SESSION=$(curl -s -X POST http://localhost:3002/v1/webchat/sessions)
-SESSION_ID=$(echo $SESSION | jq -r '.id')
-TOKEN=$(echo $SESSION | jq -r '.token')
+# Build the plugin
+npm run build
 
-# Send message
-curl -X POST http://localhost:3002/v1/webchat/send \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d "{\"sessionId\": \"$SESSION_ID\", \"content\": \"Hello!\"}"
-
-# Get messages
-curl http://localhost:3002/v1/webchat/sessions/$SESSION_ID/messages \
-  -H "Authorization: Bearer $TOKEN"
+# Configure OpenClaw to load the plugin
+# See examples/openclaw-config.yaml
 ```
 
-### Test with Browser
+## Configuration
 
-Open `test-chat.html` in a browser to test the UI.
+### Environment Variables (CLI Mode)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | 3008 | Server port |
+| `PROCESSING_MODE` | queue | `queue` (one at a time) or `batch` (grouped) |
+| `AGENT_MODE` | cli | `cli` (spawn process) or `plugin` (internal API) |
+| `WORKSPACE_PATH` | . | Path to OpenClaw workspace |
+
+### Plugin Configuration
+
+```yaml
+# In your OpenClaw config
+channels:
+  tinywebchat:
+    enabled: true
+    port: 3008
+    agentMode: plugin        # Use OpenClaw internal API
+    processingMode: queue    # or 'batch'
+    sessionTimeout: 3600
+    maxHistory: 100
+    wechatMpEnabled: true
+    allowedOrigins: ['*']
+```
 
 ## API Endpoints
 
@@ -93,120 +105,134 @@ Open `test-chat.html` in a browser to test the UI.
 | `/v1/webchat/sessions/:id/messages` | GET | Get message history |
 | `/v1/webchat/events` | GET | SSE for real-time updates |
 
-## Concurrent Message Processing
+## Testing
 
-TinyWebChat handles concurrent messages in two modes:
+### With curl
+
+```bash
+# Create session
+SESSION=$(curl -s -X POST http://localhost:3008/v1/webchat/sessions)
+SESSION_ID=$(echo $SESSION | jq -r '.id')
+TOKEN=$(echo $SESSION | jq -r '.token')
+
+# Send message
+curl -X POST http://localhost:3008/v1/webchat/send \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d "{\"sessionId\": \"$SESSION_ID\", \"content\": \"Hello!\"}"
+
+# Get messages
+curl http://localhost:3008/v1/webchat/sessions/$SESSION_ID/messages \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### With Browser
+
+Open `test-chat.html` in a browser to test the UI.
+
+### With SDK
+
+```javascript
+import { WebChatSDK } from './sdk/webchat-sdk.js';
+
+const client = WebChatSDK;
+client.init({ baseUrl: 'http://localhost:3008' });
+
+const session = await client.startSession();
+await client.sendMessage('Hello!');
+```
+
+## Message Processing Modes
 
 ### Queue Mode (Default)
 
-Messages are processed **one at a time** per session. If multiple messages arrive while processing, they wait in queue.
+Messages processed **one at a time** per session:
 
 ```bash
-PROCESSING_MODE=queue npm run openclaw
+PROCESSING_MODE=queue npm run start
 ```
 
 **Behavior:**
 - User sends "msg1", "msg2", "msg3" simultaneously
 - Agent processes "msg1" first
 - "msg2", "msg3" wait in queue
-- Agent processes each sequentially
+- Sequential responses
 
 ### Batch Mode
 
-All queued messages are combined into a **single context** and sent to the agent together.
+All queued messages combined into **single context**:
 
 ```bash
-PROCESSING_MODE=batch npm run openclaw
+PROCESSING_MODE=batch npm run start
 ```
 
 **Behavior:**
 - User sends "msg1", "msg2", "msg3" simultaneously
-- All messages combined: "user: msg1\nuser: msg2\nuser: msg3"
+- Combined: "msg1\nmsg2\nmsg3"
 - Single agent call with full context
-- Single response addressing all messages
-
-### Comparison
-
-| Mode | Use Case | Pros | Cons |
-|------|----------|------|------|
-| Queue | Sequential conversation | Simple, predictable | Slower for bursts |
-| Batch | Fast Q&A, context-rich | Faster, more context | May miss nuance |
+- One response addressing all
 
 ## File Structure
 
 ```
 tinywebchat/
-├── server/
-│   ├── index.ts         # Standalone test server
-│   └── openclaw.ts     # OpenClaw-integrated server
-├── src/
-│   └── channels/
-│       └── plugins/
-│           └── webchat/
-│               ├── index.ts
-│               ├── config.ts
-│               ├── types.ts
-│               ├── gateway.ts
-│               ├── http.ts
-│               └── ui/
-│                   ├── index.html
-│                   ├── app.js
-│                   └── styles.css
-├── sdk/
-│   ├── webchat-sdk.js  # Browser SDK
-│   └── wechat-demo/    # WeChat Mini-Program demo
-├── test-chat.html      # Browser test UI
+├── src/channels/plugins/webchat/    # Plugin source
+│   ├── index.ts                     # Entry point (dual mode)
+│   ├── gateway.ts                   # Agent communication
+│   ├── http.ts                      # HTTP handlers
+│   ├── config.ts                    # Config schema
+│   └── types.ts                     # Type definitions
+├── server/                          # Standalone servers
+│   ├── index.ts                     # Test server
+│   └── openclaw.ts                  # OpenClaw-integrated
+├── sdk/                             # Client SDKs
+│   ├── webchat-sdk.js               # Browser SDK
+│   └── wechat-demo/                 # WeChat Mini-Program
+├── examples/                        # Example configs
+│   ├── openclaw-config.yaml
+│   └── docker-compose.yaml
+├── test/                            # Tests
+│   ├── gateway.test.ts
+│   └── http.test.ts
+├── test-chat.html                   # Browser test UI
+├── openclaw-plugin.yaml             # Plugin manifest
 └── README.md
 ```
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | 3002 | Server port |
-| `PROCESSING_MODE` | queue | Message processing: queue or batch |
 
 ## Session Architecture
 
 TinyWebChat has **two layers of sessions**:
 
-```
-┌─────────────────────────────────────────────┐
-│  TinyWebChat Session (Browser/WeChat)       │  ← Per-tab, in-memory
-│  - Token auth                               │     Lost on page refresh
-│  - Message history                          │
-└─────────────────────────────────────────────┘
-              │
-              │ HTTP/SSE
-              ▼
-┌─────────────────────────────────────────────┐
-│  OpenClaw Session (Agent)                   │  ← Persistent, shared
-│  - Conversation context                     │     Currently uses 'main'
-│  - Tool access                              │     (all tabs share context)
-└─────────────────────────────────────────────┘
-```
-
-### Key Differences
-
 | Aspect | TinyWebChat Session | OpenClaw Session |
 |--------|--------------------|------------------|
-| **Scope** | Per browser tab / WeChat page | Shared across all tabs |
+| **Scope** | Per browser tab / WeChat page | Shared across all tabs (CLI mode) |
 | **Lifetime** | Until page refresh/close | Persistent in OpenClaw |
 | **Storage** | In-memory Map | OpenClaw session storage |
 | **Purpose** | Web connection, message queue | Agent context, memory |
 
-**Note:** Currently all TinyWebChat sessions connect to a single OpenClaw session (`main`). This means multiple browser tabs share the same agent context. For isolation, each TinyWebChat session would need a unique OpenClaw session ID.
+**Note:** In CLI mode, all TinyWebChat sessions connect to a single OpenClaw session (`main`). In Plugin mode, sessions can be isolated per OpenClaw session.
 
-## Comparison
+## Scripts
 
-| Feature | Current Control UI | TinyWebChat |
-|---------|-------------------|-------------|
-| Protocol | WebSocket only | HTTP REST + SSE |
-| Auth | Gateway token | Per-session token |
-| Size | Full React app | <50kb total |
-| WeChat MP | ❌ | ✅ |
-| H5 Browser | ✅ (heavy) | ✅ (lightweight) |
-| Concurrent handling | ❌ | ✅ (queue/batch) |
+```bash
+# Development
+npm run dev              # Watch mode compilation
+npm run start            # Start standalone server (CLI mode)
+npm run server           # Start test server
+
+# Build
+npm run build            # Compile TypeScript
+npm run build:plugin     # Build for OpenClaw plugin
+
+# Testing
+npm test                 # Run all tests
+npm run test:watch       # Watch mode testing
+npm run test:coverage    # Coverage report
+
+# Linting
+npm run lint             # ESLint check
+npm run lint:fix         # Auto-fix issues
+```
 
 ## WeChat Mini-Program
 
