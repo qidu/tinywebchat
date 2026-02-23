@@ -2,18 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createWebchatGateway, resetStorage } from '../src/channels/plugins/webchat/gateway.js';
 import type { WebchatConfig } from '../src/channels/plugins/webchat/types.js';
 
-// Mock child_process to avoid spawning real processes
-const { mockSpawn } = vi.hoisted(() => ({
-  mockSpawn: vi.fn(),
-}));
-vi.mock('node:child_process', () => ({
-  spawn: mockSpawn,
-}));
-
 const mockConfig: WebchatConfig = {
   enabled: true,
   port: 18799,
-  agentMode: 'cli',
   processingMode: 'queue',
   sessionTimeout: 3600,
   maxHistory: 100,
@@ -30,17 +21,6 @@ describe('WebchatGateway', () => {
 
   beforeEach(() => {
     resetStorage();
-    // Mock spawn to return a fake child process that immediately exits with success
-    mockSpawn.mockClear();
-    mockSpawn.mockReturnValue({
-      stdout: { on: vi.fn((event, callback) => {
-        if (event === 'data') callback(JSON.stringify({ result: { payloads: [{ text: 'Mock response' }] }, messageId: 'mock-id' }));
-      }) },
-      stderr: { on: vi.fn() },
-      on: vi.fn((event, callback) => {
-        if (event === 'close') setTimeout(() => callback(0), 0);
-      }),
-    });
     gateway = createWebchatGateway({ config: mockConfig });
   });
 
@@ -138,7 +118,6 @@ describe('WebchatGateway', () => {
 describe('Gateway with Plugin Mode', () => {
   const mockPluginConfig: WebchatConfig = {
     ...mockConfig,
-    agentMode: 'plugin',
   };
 
   const mockChannelContext = {

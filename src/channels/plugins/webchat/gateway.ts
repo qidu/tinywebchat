@@ -2,7 +2,6 @@
  * TinyWebChat Gateway - Full implementation with CLI/Plugin dual mode support
  */
 
-import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import type { WebchatConfig, WebchatMessage, WebchatSession } from './types.js';
 
@@ -337,7 +336,7 @@ async function processBatch(
 }
 
 /**
- * Send message to agent (routes to CLI or Plugin mode)
+ * Send message to agent via OpenClaw plugin API
  */
 async function sendToAgent(
   message: string,
@@ -345,57 +344,14 @@ async function sendToAgent(
   config: WebchatConfig,
   channelContext?: GatewayOptions['channelContext']
 ): Promise<AgentResponse> {
-  if (config.agentMode === 'plugin' && channelContext) {
+  if (channelContext) {
     return sendViaPlugin(message, sessionKey, channelContext);
-  } else {
-    return sendViaCLI(message, sessionKey, config);
   }
-}
-
-/**
- * Send via CLI (spawn openclaw process)
- */
-async function sendViaCLI(
-  message: string,
-  sessionKey: string,
-  config: WebchatConfig
-): Promise<AgentResponse> {
-  return new Promise((resolve, reject) => {
-    const cli = spawn('openclaw', [
-      'agent',
-      '-m', message,
-      '--session-id', sessionKey,
-      '--json'
-    ], {
-      cwd: config.workspacePath || process.cwd(),
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: false,
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    cli.stdout.on('data', (data) => { stdout += data.toString(); });
-    cli.stderr.on('data', (data) => { stderr += data.toString(); });
-
-    cli.on('close', (code) => {
-      if (code === 0) {
-        try {
-          const result = JSON.parse(stdout);
-          const content = result.result?.payloads?.[0]?.text || 
-                         result.summary || 
-                         stdout.substring(0, 500);
-          resolve({ content, messageId: result.messageId });
-        } catch {
-          resolve({ content: stdout.substring(0, 500) });
-        }
-      } else {
-        reject(new Error(stderr || `Process exited with code ${code}`));
-      }
-    });
-
-    cli.on('error', reject);
-  });
+  
+  // Fallback: return error when no channel context
+  return {
+    content: 'Error: No agent context available. Please ensure TinyWebChat is running as an OpenClaw plugin.',
+  };
 }
 
 /**

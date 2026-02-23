@@ -21,17 +21,7 @@ export const WEBCHAT_CONFIG_SCHEMA = {
       default: 18799,
       minimum: 1024,
       maximum: 65535,
-      description: 'Server port for standalone mode',
-    },
-    agentMode: {
-      type: 'string',
-      enum: ['cli', 'plugin'],
-      default: 'cli',
-      description: 'Agent communication mode: cli (spawn process) or plugin (internal API)',
-    },
-    workspacePath: {
-      type: 'string',
-      description: 'Workspace path for CLI mode (defaults to process.cwd())',
+      description: 'Server port for HTTP endpoints',
     },
     processingMode: {
       type: 'string',
@@ -98,8 +88,6 @@ export function normalizeWebchatConfig(raw: unknown): WebchatConfig {
     enabled: cfg.enabled !== false,
     baseUrl: typeof cfg.baseUrl === 'string' ? cfg.baseUrl : undefined,
     port: typeof cfg.port === 'number' ? cfg.port : 18799,
-    agentMode: (cfg.agentMode === 'plugin' ? 'plugin' : 'cli') as 'cli' | 'plugin',
-    workspacePath: typeof cfg.workspacePath === 'string' ? cfg.workspacePath : undefined,
     processingMode: (cfg.processingMode === 'batch' ? 'batch' : 'queue') as 'queue' | 'batch',
     sessionTimeout: typeof cfg.sessionTimeout === 'number' ? cfg.sessionTimeout : 3600,
     maxHistory: typeof cfg.maxHistory === 'number' ? cfg.maxHistory : 100,

@@ -1,20 +1,13 @@
 /**
- * TinyWebChat HTTP Handlers and Standalone Server
+ * TinyWebChat HTTP Handlers
  * 
- * Supports both plugin mode (registered routes) and CLI mode (standalone server)
+ * Provides HTTP handlers for OpenClaw plugin mode
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { readFileSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { WebchatConfig } from './types.js';
 import type { WebchatGateway } from './gateway.js';
 import { createWebchatGateway } from './gateway.js';
-
-// Get current directory
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // SSE connections storage
 const sseConnections = new Map<string, Set<ServerResponse>>();
@@ -294,90 +287,4 @@ export function createHttpHandlers(config: WebchatConfig, gateway: WebchatGatewa
       });
     },
   };
-}
-
-/**
- * Create standalone HTTP server (for CLI mode)
- */
-export async function createStandaloneServer(config: WebchatConfig): Promise<void> {
-  const gateway = createWebchatGateway({ config });
-  const handlers = createHttpHandlers(config, gateway);
-
-  const server = createServer(async (req, res) => {
-    try {
-      const url = new URL(req.url || '/', `http://localhost:${config.port}`);
-      const path = url.pathname;
-
-      // Route handling
-      // Serve tinywebchat.html at root path
-      if (path === '/' || path === '/tinywebchat.html') {
-        // Try multiple paths for both dev (src) and production (dist)
-        const possiblePaths = [
-          join(__dirname, '../../../../tinywebchat.html'),   // dev: src/channels/plugins/webchat -> project root
-          join(__dirname, '../../../tinywebchat.html'),       // prod: dist/channels/plugins/webchat -> dist root
-        ];
-        
-        for (const htmlPath of possiblePaths) {
-          if (existsSync(htmlPath)) {
-            const html = readFileSync(htmlPath, 'utf-8');
-            res.statusCode = 200;
-            res.setHeader('Content-Type', 'text/html; charset=utf-8');
-            res.setHeader('Access-Control-Allow-Origin', config.allowedOrigins?.join(', ') || '*');
-            res.end(html);
-            return;
-          }
-        }
-        
-        // If file not found, return 404
-        sendJson(res, 404, { error: 'Chat UI not found. Please ensure tinywebchat.html is deployed.' }, config.allowedOrigins);
-        return;
-      }
-
-      if (path === '/health') {
-        await handlers.health(req, res);
-      } else if (path === '/v1/webchat/sessions' && req.method === 'POST') {
-        await handlers.createSession(req, res);
-      } else if (path === '/v1/webchat/sessions' && req.method === 'GET') {
-        await handlers.getSessions(req, res);
-      } else if (path.match(/^\/v1\/webchat\/sessions\/[^/]+\/messages$/)) {
-        const sessionId = path.split('/')[4];
-        await handlers.getSessionMessages(req, res, sessionId);
-      } else if (path === '/v1/webchat/send') {
-        await handlers.sendMessage(req, res);
-      } else if (path === '/v1/webchat/events') {
-        await handlers.sseEvents(req, res);
-      } else {
-        sendJson(res, 404, { error: 'Not found' }, config.allowedOrigins);
-      }
-    } catch (err) {
-      console.error('Request error:', err);
-      sendJson(res, 500, { error: 'Internal server error' }, config.allowedOrigins);
-    }
-  });
-
-  return new Promise((resolve, reject) => {
-    server.listen(config.port, () => {
-      console.log(`
-╔════════════════════════════════════════════════════╗
-║         TinyWebChat Server Started                 ║
-╠════════════════════════════════════════════════════╣
-║  Mode:      ${config.agentMode.toUpperCase().padEnd(39)}║
-║  Port:      ${String(config.port).padEnd(39)}║
-║  Processing: ${config.processingMode.toUpperCase().padEnd(38)}║
-╠════════════════════════════════════════════════════╣
-║  Endpoints:                                        ║
-║  POST   /v1/webchat/sessions      - Create session ║
-║  GET    /v1/webchat/sessions      - List sessions  ║
-║  GET    /v1/webchat/sessions/:id  - Get messages   ║
-║  POST   /v1/webchat/send          - Send message   ║
-║  GET    /v1/webchat/events        - SSE stream     ║
-║                                                    ║
-║  Test:  curl localhost:${String(config.port).padEnd(26)}║
-╚════════════════════════════════════════════════════╝
-      `);
-      resolve();
-    });
-
-    server.on('error', reject);
-  });
 }

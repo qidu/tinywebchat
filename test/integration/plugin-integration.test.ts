@@ -12,7 +12,6 @@ describe('Plugin Integration', () => {
   const mockConfig: WebchatConfig = {
     enabled: true,
     port: 18799,
-    agentMode: 'plugin',
     processingMode: 'queue',
     sessionTimeout: 3600,
     maxHistory: 100,
@@ -60,13 +59,13 @@ describe('Plugin Integration', () => {
       );
     });
 
-    it('should fall back to CLI mode when no context provided', async () => {
-      const consoleSpy = vi.spyOn(console, 'warn');
+    it('should fail gracefully when no context provided', async () => {
+      const consoleSpy = vi.spyOn(console, 'error');
       
       await webchatPlugin.init(mockConfig, undefined);
       
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[tinywebchat] No context provided, falling back to CLI mode'
+        '[tinywebchat] No OpenClaw context provided. Plugin requires OpenClaw to run.'
       );
     });
 
@@ -158,7 +157,7 @@ describe('Plugin Configuration Schema', () => {
     expect(schema.properties).toBeDefined();
     expect(schema.properties.enabled).toBeDefined();
     expect(schema.properties.port).toBeDefined();
-    expect(schema.properties.agentMode).toBeDefined();
+    expect(schema.properties.processingMode).toBeDefined();
   });
 
   it('should validate configuration defaults', () => {
@@ -166,7 +165,6 @@ describe('Plugin Configuration Schema', () => {
     
     expect(schema.properties.enabled.default).toBe(true);
     expect(schema.properties.port.default).toBe(18799);
-    expect(schema.properties.agentMode.default).toBe('cli');
     expect(schema.properties.processingMode.default).toBe('queue');
   });
 });

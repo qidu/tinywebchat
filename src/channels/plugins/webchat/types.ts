@@ -9,14 +9,8 @@ export interface WebchatConfig {
   /** Base URL for the channel (defaults to gateway URL) */
   baseUrl?: string;
   
-  /** Server port (for standalone mode) */
+  /** Server port */
   port?: number;
-  
-  /** Agent communication mode: 'cli' (spawn process) or 'plugin' (internal API) */
-  agentMode: 'cli' | 'plugin';
-  
-  /** Workspace path for CLI mode (defaults to process.cwd()) */
-  workspacePath?: string;
   
   /** Message processing mode: 'queue' or 'batch' */
   processingMode: 'queue' | 'batch';
@@ -106,7 +100,6 @@ export interface MessageListResponse {
 export const DEFAULT_WEBCONFIG: WebchatConfig = {
   enabled: true,
   port: 18799,
-  agentMode: 'cli',  // Default: CLI mode for standalone usage
   processingMode: 'queue',
   sessionTimeout: 3600, // 1 hour
   maxHistory: 100,

@@ -1,6 +1,9 @@
 # Source files
 src/
 
+# Server files (CLI mode only - not needed for plugin)
+server/
+
 # Test files
 test/
 *.test.ts

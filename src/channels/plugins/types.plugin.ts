@@ -28,7 +28,6 @@ export interface ChannelPlugin {
 export interface PluginConfig {
   enabled?: boolean;
   port?: number;
-  agentMode?: 'cli' | 'plugin';
   processingMode?: 'queue' | 'batch';
   sessionTimeout?: number;
   maxHistory?: number;
