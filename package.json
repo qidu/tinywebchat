@@ -4,6 +4,9 @@
   "description": "Lightweight webchat channel for OpenClaw - H5 & WeChat mini-program support",
   "main": "dist/channels/plugins/webchat/index.js",
   "type": "module",
+  "openclaw": {
+    "extensions": ["./dist/channels/plugins/webchat/index.js"]
+  },
   "scripts": {
     "build": "tsc",
     "build:plugin": "tsc && cp openclaw-plugin.yaml openclaw.plugin.json tinywebchat.html dist/",

@@ -184,3 +184,17 @@ export { normalizeWebchatConfig, WEBCHAT_CONFIG_SCHEMA };
 export type { WebchatConfig };
 
 export default webchatPlugin;
+
+// OpenClaw plugin activation entry point
+export function register(api: any): void {
+  console.log('[tinywebchat] Registering plugin...');
+  
+  // Register as a channel plugin
+  if (api.registerChannel) {
+    api.registerChannel({
+      plugin: webchatPlugin,
+    });
+  }
+  
+  console.log('[tinywebchat] Plugin registered successfully');
+}
