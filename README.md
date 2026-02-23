@@ -127,7 +127,9 @@ curl http://localhost:3008/v1/webchat/sessions/$SESSION_ID/messages \
 ```
 
 ### With Browser
-
+```python
+python3 -m http.server 8282
+```
 Open `test-chat.html` in a browser to test the UI.
 
 ### With SDK
