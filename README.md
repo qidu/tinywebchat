@@ -238,9 +238,21 @@ npm run lint:fix         # Auto-fix issues
 
 See `sdk/wechat-demo/` for a complete WeChat Mini-Program example.
 
+## Deployment
+
+For detailed deployment scenarios and production setup, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+## Development
+
+To contribute to TinyWebChat, please read our [CONTRIBUTING.md](CONTRIBUTING.md) guide.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history and changes.
+
 ## License
 
-MIT
+MIT - See [LICENSE](LICENSE) file for details.
 
 ## Related
 

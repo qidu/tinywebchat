@@ -1,25 +1,46 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { createWebchatGateway } from '../src/channels/plugins/webchat/gateway.js';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createWebchatGateway, resetStorage } from '../src/channels/plugins/webchat/gateway.js';
 import type { WebchatConfig } from '../src/channels/plugins/webchat/types.js';
 
+// Mock child_process to avoid spawning real processes
+const { mockSpawn } = vi.hoisted(() => ({
+  mockSpawn: vi.fn(),
+}));
+vi.mock('node:child_process', () => ({
+  spawn: mockSpawn,
+}));
+
+const mockConfig: WebchatConfig = {
+  enabled: true,
+  port: 3008,
+  agentMode: 'cli',
+  processingMode: 'queue',
+  sessionTimeout: 3600,
+  maxHistory: 100,
+  wechatMpEnabled: true,
+  allowedOrigins: ['*'],
+  rateLimit: 60,
+  offlineQueue: true,
+  maxOfflineQueue: 50,
+};
+
 describe('WebchatGateway', () => {
-  const mockConfig: WebchatConfig = {
-    enabled: true,
-    port: 3008,
-    agentMode: 'cli',
-    processingMode: 'queue',
-    sessionTimeout: 3600,
-    maxHistory: 100,
-    wechatMpEnabled: true,
-    allowedOrigins: ['*'],
-    rateLimit: 60,
-    offlineQueue: true,
-    maxOfflineQueue: 50,
-  };
 
   let gateway: ReturnType<typeof createWebchatGateway>;
 
   beforeEach(() => {
+    resetStorage();
+    // Mock spawn to return a fake child process that immediately exits with success
+    mockSpawn.mockClear();
+    mockSpawn.mockReturnValue({
+      stdout: { on: vi.fn((event, callback) => {
+        if (event === 'data') callback(JSON.stringify({ result: { payloads: [{ text: 'Mock response' }] }, messageId: 'mock-id' }));
+      }) },
+      stderr: { on: vi.fn() },
+      on: vi.fn((event, callback) => {
+        if (event === 'close') setTimeout(() => callback(0), 0);
+      }),
+    });
     gateway = createWebchatGateway({ config: mockConfig });
   });
 

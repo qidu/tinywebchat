@@ -11,6 +11,9 @@ const sessions = new Map<string, WebchatSession>();
 const messageQueues = new Map<string, WebchatMessage[]>();
 const sessionProcessing = new Map<string, boolean>();
 
+// Session cleanup interval
+let cleanupInterval: NodeJS.Timeout | null = null;
+
 export interface AgentResponse {
   content: string;
   messageId?: string;
@@ -28,6 +31,7 @@ export interface WebchatGateway {
   listSessions: () => Promise<WebchatSession[]>;
   validateToken: (sessionId: string, token: string) => Promise<boolean>;
   refreshSession: (sessionId: string) => Promise<void>;
+  cleanupExpiredSessions: () => number;
   
   // Message handling
   sendMessage: (sessionId: string, content: string, config: WebchatConfig) => Promise<SendMessageResult>;
@@ -36,6 +40,10 @@ export interface WebchatGateway {
   // Events
   emitEvent: (sessionId: string, event: unknown) => void;
   setBroadcastFn: (fn: (sessionId: string, event: unknown) => void) => void;
+  
+  // Lifecycle
+  startCleanup: (intervalMs?: number) => void;
+  stopCleanup: () => void;
 }
 
 export interface GatewayOptions {
@@ -60,7 +68,7 @@ let broadcastFn: ((sessionId: string, event: unknown) => void) | null = null;
 export function createWebchatGateway(options: GatewayOptions): WebchatGateway {
   const { config, channelContext } = options;
 
-  return {
+  const gateway = {
     // Session management
     async createSession(metadata?: Record<string, unknown>): Promise<WebchatSession> {
       const session: WebchatSession = {
@@ -147,7 +155,66 @@ export function createWebchatGateway(options: GatewayOptions): WebchatGateway {
     setBroadcastFn(fn: (sessionId: string, event: unknown) => void): void {
       broadcastFn = fn;
     },
+
+    // Session cleanup
+    cleanupExpiredSessions(): number {
+      const now = Date.now();
+      let cleaned = 0;
+      
+      for (const [sessionId, session] of sessions.entries()) {
+        const expiresAt = session.lastActivityAt + (config.sessionTimeout * 1000);
+        
+        if (now > expiresAt) {
+          // Clean up session
+          sessions.delete(sessionId);
+          messageQueues.delete(sessionId);
+          sessionProcessing.delete(sessionId);
+          
+          // Notify about session expiration
+          if (broadcastFn) {
+            broadcastFn(sessionId, { 
+              type: 'session_expired', 
+              data: { sessionId, expiredAt: now } 
+            });
+          }
+          
+          cleaned++;
+        }
+      }
+      
+      return cleaned;
+    },
+
+    // Start automatic cleanup
+    startCleanup(intervalMs: number = 60000): void {
+      if (cleanupInterval) {
+        clearInterval(cleanupInterval);
+      }
+      
+      cleanupInterval = setInterval(() => {
+        const cleaned = this.cleanupExpiredSessions();
+        if (cleaned > 0) {
+          console.log(`[tinywebchat] Cleaned up ${cleaned} expired sessions`);
+        }
+      }, intervalMs);
+      
+      console.log(`[tinywebchat] Started session cleanup (interval: ${intervalMs}ms)`);
+    },
+
+    // Stop automatic cleanup
+    stopCleanup(): void {
+      if (cleanupInterval) {
+        clearInterval(cleanupInterval);
+        cleanupInterval = null;
+        console.log('[tinywebchat] Stopped session cleanup');
+      }
+    },
   };
+
+  // Start automatic cleanup
+  gateway.startCleanup(60000); // Cleanup every minute
+  
+  return gateway;
 }
 
 /**
@@ -380,4 +447,15 @@ function generateId(): string {
 
 function generateToken(): string {
   return crypto.randomBytes(32).toString('hex');
+}
+
+export function resetStorage(): void {
+  sessions.clear();
+  messageQueues.clear();
+  sessionProcessing.clear();
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+  }
+  broadcastFn = null;
 }

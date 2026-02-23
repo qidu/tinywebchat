@@ -39,7 +39,8 @@
     "dist/",
     "sdk/",
     "openclaw-plugin.yaml",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "exports": {
     ".": {
@@ -49,6 +50,10 @@
     "./sdk": {
       "import": "./sdk/webchat-sdk.js"
     }
+  },
+  "dependencies": {
+    "@openclaw/core": "^2026.2.0",
+    "@openclaw/channel-plugin": "^2026.2.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
