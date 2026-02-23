@@ -12,7 +12,7 @@ channels:
     agentMode: plugin
     
     # Server port (for standalone mode or plugin HTTP server)
-    port: 3008
+    port: 18799
     
     # Message processing mode:
     # - 'queue': Process one message at a time per session

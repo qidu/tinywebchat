@@ -12,7 +12,7 @@ vi.mock('node:child_process', () => ({
 
 const mockConfig: WebchatConfig = {
   enabled: true,
-  port: 3008,
+  port: 18799,
   agentMode: 'cli',
   processingMode: 'queue',
   sessionTimeout: 3600,

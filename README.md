@@ -49,7 +49,7 @@ npm install
 npm run start
 
 # Or with custom port
-PORT=3008 npm run start
+PORT=18799 npm run start
 
 # With batch processing mode
 PROCESSING_MODE=batch npm run start
@@ -73,7 +73,7 @@ npm run build
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | 3008 | Server port |
+| `PORT` | 18799 | Server port |
 | `PROCESSING_MODE` | queue | `queue` (one at a time) or `batch` (grouped) |
 | `AGENT_MODE` | cli | `cli` (spawn process) or `plugin` (internal API) |
 | `WORKSPACE_PATH` | . | Path to OpenClaw workspace |
@@ -85,7 +85,7 @@ npm run build
 channels:
   tinywebchat:
     enabled: true
-    port: 3008
+    port: 18799
     agentMode: plugin        # Use OpenClaw internal API
     processingMode: queue    # or 'batch'
     sessionTimeout: 3600
@@ -113,18 +113,18 @@ channels:
 
 ```bash
 # Create session
-SESSION=$(curl -s -X POST http://localhost:3008/v1/webchat/sessions)
+SESSION=$(curl -s -X POST http://localhost:18799/v1/webchat/sessions)
 SESSION_ID=$(echo $SESSION | jq -r '.id')
 TOKEN=$(echo $SESSION | jq -r '.token')
 
 # Send message
-curl -X POST http://localhost:3008/v1/webchat/send \
+curl -X POST http://localhost:18799/v1/webchat/send \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d "{\"sessionId\": \"$SESSION_ID\", \"content\": \"Hello!\"}"
 
 # Get messages
-curl http://localhost:3008/v1/webchat/sessions/$SESSION_ID/messages \
+curl http://localhost:18799/v1/webchat/sessions/$SESSION_ID/messages \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -137,12 +137,12 @@ Simply open the chat UI in your browser:
 pnpm start
 
 # Then open in browser
-open http://localhost:3008
+open http://localhost:18799
 ```
 
 Or access `tinywebchat.html` directly at:
-- http://localhost:3008/
-- http://localhost:3008/tinywebchat.html
+- http://localhost:18799/
+- http://localhost:18799/tinywebchat.html
 
 ### With SDK
 
@@ -150,7 +150,7 @@ Or access `tinywebchat.html` directly at:
 import { WebChatSDK } from './sdk/webchat-sdk.js';
 
 const client = WebChatSDK;
-client.init({ baseUrl: 'http://localhost:3008' });
+client.init({ baseUrl: 'http://localhost:18799' });
 
 const session = await client.startSession();
 await client.sendMessage('Hello!');

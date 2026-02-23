@@ -14,7 +14,7 @@
       },
       "port": {
         "type": "number",
-        "default": 3008
+        "default": 18799
       },
       "agentMode": {
         "type": "string",

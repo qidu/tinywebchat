@@ -11,7 +11,7 @@ import type { WebchatConfig } from '../../src/channels/plugins/webchat/types.js'
 describe('Plugin Integration', () => {
   const mockConfig: WebchatConfig = {
     enabled: true,
-    port: 3008,
+    port: 18799,
     agentMode: 'plugin',
     processingMode: 'queue',
     sessionTimeout: 3600,

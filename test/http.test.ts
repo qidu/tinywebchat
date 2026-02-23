@@ -7,7 +7,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 describe('HTTP Handlers', () => {
   const mockConfig: WebchatConfig = {
     enabled: true,
-    port: 3008,
+    port: 18799,
     agentMode: 'cli',
     processingMode: 'queue',
     sessionTimeout: 3600,

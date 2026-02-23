@@ -53,7 +53,7 @@ npm run start:plugin
 
 **Environment Variables:**
 ```bash
-PORT=3008
+PORT=18799
 AGENT_MODE=cli
 PROCESSING_MODE=queue
 SESSION_TIMEOUT=3600
@@ -80,7 +80,7 @@ open test-chat.html
 ```yaml
 # config.yaml
 enabled: true
-port: 3008
+port: 18799
 agentMode: cli
 processingMode: queue
 sessionTimeout: 3600
@@ -108,7 +108,7 @@ Type=simple
 User=tinywebchat
 WorkingDirectory=/opt/tinywebchat
 Environment=NODE_ENV=production
-Environment=PORT=3008
+Environment=PORT=18799
 Environment=AGENT_MODE=cli
 Environment=PROCESSING_MODE=queue
 ExecStart=/usr/bin/node dist/channels/plugins/webchat/index.js
@@ -129,7 +129,7 @@ WantedBy=multi-user.target
 channels:
   tinywebchat:
     enabled: true
-    port: 3008
+    port: 18799
     agentMode: plugin
     processingMode: queue
     sessionTimeout: 3600
@@ -175,7 +175,7 @@ RUN addgroup -g 1001 -S nodejs && \
 
 USER tinywebchat
 
-EXPOSE 3008
+EXPOSE 18799
 
 CMD ["node", "dist/channels/plugins/webchat/index.js"]
 ```
@@ -188,10 +188,10 @@ services:
   tinywebchat:
     build: .
     ports:
-      - "3008:3008"
+      - "18799:18799"
     environment:
       - NODE_ENV=production
-      - PORT=3008
+      - PORT=18799
       - AGENT_MODE=cli
       - PROCESSING_MODE=queue
       - SESSION_TIMEOUT=3600
@@ -201,7 +201,7 @@ services:
       - ./logs:/app/logs
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3008/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:18799/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -215,7 +215,7 @@ services:
 ```nginx
 # /etc/nginx/sites-available/tinywebchat
 upstream tinywebchat_backend {
-    server 127.0.0.1:3008;
+    server 127.0.0.1:18799;
     # Add more servers for load balancing
     # server 127.0.0.1:3009;
     # server 127.0.0.1:3010;
@@ -259,7 +259,7 @@ server {
 **Caddy Configuration:**
 ```caddy
 chat.yourdomain.com {
-    reverse_proxy localhost:3008 {
+    reverse_proxy localhost:18799 {
         header_up X-Real-IP {remote_host}
     }
     
@@ -282,7 +282,7 @@ For high-traffic deployments, consider:
 1. **Multiple Instances:**
    ```bash
    # Start multiple instances on different ports
-   PORT=3008 npm start &
+   PORT=18799 npm start &
    PORT=3009 npm start &
    PORT=3010 npm start &
    ```
@@ -291,7 +291,7 @@ For high-traffic deployments, consider:
    ```nginx
    upstream tinywebchat {
        ip_hash; # For session stickiness
-       server 127.0.0.1:3008;
+       server 127.0.0.1:18799;
        server 127.0.0.1:3009;
        server 127.0.0.1:3010;
    }
@@ -362,10 +362,10 @@ const logger = winston.createLogger({
 **Health Checks:**
 ```bash
 # Basic health check
-curl -f http://localhost:3008/health
+curl -f http://localhost:18799/health
 
 # Detailed status
-curl http://localhost:3008/health | jq .
+curl http://localhost:18799/health | jq .
 ```
 
 **Metrics Collection:**
@@ -450,7 +450,7 @@ const httpRequestDuration = new promClient.Histogram({
    # Allow only necessary ports
    ufw allow 443/tcp
    ufw allow 80/tcp
-   ufw deny 3008/tcp  # Internal only
+   ufw deny 18799/tcp  # Internal only
    ```
 
 ## Troubleshooting
@@ -460,7 +460,7 @@ const httpRequestDuration = new promClient.Histogram({
 1. **Server Won't Start:**
    ```bash
    # Check port availability
-   netstat -tulpn | grep :3008
+   netstat -tulpn | grep :18799
    
    # Check Node.js version
    node --version
@@ -472,7 +472,7 @@ const httpRequestDuration = new promClient.Histogram({
 2. **Connection Issues:**
    ```bash
    # Test connectivity
-   curl -v http://localhost:3008/health
+   curl -v http://localhost:18799/health
    
    # Check firewall
    sudo ufw status

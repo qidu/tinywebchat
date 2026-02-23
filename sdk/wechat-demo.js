@@ -68,7 +68,7 @@ export default {
       
       // Create session via HTTP
       const res = await wx.request({
-        url: 'http://localhost:3008/v1/webchat/sessions',
+        url: 'http://localhost:18799/v1/webchat/sessions',
         method: 'POST'
       });
       
@@ -177,7 +177,7 @@ export default {
     
     try {
       const res = await wx.request({
-        url: 'http://localhost:3008/v1/webchat/send',
+        url: 'http://localhost:18799/v1/webchat/send',
         method: 'POST',
         header: {
           'Content-Type': 'application/json',

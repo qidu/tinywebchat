@@ -15,7 +15,7 @@ vi.mock('../../src/channels/plugins/webchat/http.js', () => ({
 
 const mockConfig: WebchatConfig = {
   enabled: true,
-  port: 3008,
+  port: 18799,
   agentMode: 'cli',
   processingMode: 'queue',
   sessionTimeout: 3600,
