@@ -8,9 +8,16 @@
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { readFileSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 
-const PORT = 3008;
+const PORT = 18799;
+
+// Get current directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // In-memory storage (would use OpenClaw session storage in production)
 const sessions = new Map<string, WebchatSession>();
@@ -114,6 +121,19 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   }
   
   // Routes
+  // Serve tinywebchat.html at root path
+  if (path === '/' || path === '/tinywebchat.html') {
+    const htmlPath = join(__dirname, '..', 'tinywebchat.html');
+    if (existsSync(htmlPath)) {
+      const html = readFileSync(htmlPath, 'utf-8');
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.end(html);
+      return;
+    }
+  }
+  
   if (path === '/health') {
     sendJson(res, 200, { status: 'ok', timestamp: Date.now() });
     return;
@@ -227,10 +247,20 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   if (path === '/v1/webchat/events' && req.method === 'GET') {
     // Server-Sent Events
     const sessionId = url.searchParams.get('sessionId');
-    const token = getAuthToken(req);
+    const token = url.searchParams.get('token') || getAuthToken(req);
     
-    if (!sessionId || !token || !validateToken(sessionId, token)) {
-      sendJson(res, 401, { error: 'Unauthorized' });
+    console.log('[SSE] request:', req.url);
+    console.log('[SSE] sessionId:', sessionId, 'token:', token ? 'present' : 'missing');
+    
+    if (!sessionId || !token) {
+      console.log('[SSE] auth failed: missing sessionId or token');
+      sendJson(res, 401, { error: 'Unauthorized: missing sessionId or token' });
+      return;
+    }
+    
+    if (!validateToken(sessionId, token)) {
+      console.log('[SSE] auth failed: invalid token');
+      sendJson(res, 401, { error: 'Unauthorized: invalid token' });
       return;
     }
     
@@ -315,6 +345,7 @@ server.listen(PORT, () => {
 ║  GET    /v1/webchat/events        - SSE stream     ║
 ║                                                    ║
 ║  Test: curl localhost:${PORT}/health               ║
+║  Test: curl localhost:${PORT}/tinywebchat.html     ║
 ╚════════════════════════════════════════════════════╝
   `);
 });

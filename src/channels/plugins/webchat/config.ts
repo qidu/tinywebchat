@@ -18,7 +18,7 @@ export const WEBCHAT_CONFIG_SCHEMA = {
     },
     port: {
       type: 'number',
-      default: 3008,
+      default: 18799,
       minimum: 1024,
       maximum: 65535,
       description: 'Server port for standalone mode',
@@ -97,7 +97,7 @@ export function normalizeWebchatConfig(raw: unknown): WebchatConfig {
   return {
     enabled: cfg.enabled !== false,
     baseUrl: typeof cfg.baseUrl === 'string' ? cfg.baseUrl : undefined,
-    port: typeof cfg.port === 'number' ? cfg.port : 3008,
+    port: typeof cfg.port === 'number' ? cfg.port : 18799,
     agentMode: (cfg.agentMode === 'plugin' ? 'plugin' : 'cli') as 'cli' | 'plugin',
     workspacePath: typeof cfg.workspacePath === 'string' ? cfg.workspacePath : undefined,
     processingMode: (cfg.processingMode === 'batch' ? 'batch' : 'queue') as 'queue' | 'batch',

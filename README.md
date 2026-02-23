@@ -98,6 +98,8 @@ channels:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
+| `/` | GET | Chat UI (tinywebchat.html) |
+| `/tinywebchat.html` | GET | Chat UI (HTML page) |
 | `/health` | GET | Health check |
 | `/v1/webchat/sessions` | POST | Create new session |
 | `/v1/webchat/sessions` | GET | List all sessions |
@@ -127,10 +129,20 @@ curl http://localhost:3008/v1/webchat/sessions/$SESSION_ID/messages \
 ```
 
 ### With Browser
-```python
-python3 -m http.server 8282
+
+Simply open the chat UI in your browser:
+
+```bash
+# Start the server (CLI mode)
+pnpm start
+
+# Then open in browser
+open http://localhost:3008
 ```
-Open `test-chat.html` in a browser to test the UI.
+
+Or access `tinywebchat.html` directly at:
+- http://localhost:3008/
+- http://localhost:3008/tinywebchat.html
 
 ### With SDK
 
@@ -196,7 +208,7 @@ tinywebchat/
 ├── test/                            # Tests
 │   ├── gateway.test.ts
 │   └── http.test.ts
-├── test-chat.html                   # Browser test UI
+├── tinywebchat.html                 # Chat UI (served at /)
 ├── openclaw-plugin.yaml             # Plugin manifest
 └── README.md
 ```

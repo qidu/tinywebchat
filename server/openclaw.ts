@@ -9,7 +9,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 
-const PORT = 3008;
+const PORT = 18799;
 
 // In-memory storage
 const sessions = new Map<string, WebchatSession>();
@@ -466,6 +466,7 @@ server.listen(PORT, () => {
 ║  GET    /v1/webchat/events        - SSE stream    ║
 ║                                                    ║
 ║  Test: curl localhost:${PORT}/health               ║
+║  Test: curl localhost:${PORT}/tinywebchat.html     ║
 ╚════════════════════════════════════════════════════╝
   `);
 });

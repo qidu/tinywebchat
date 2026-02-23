@@ -5,9 +5,16 @@
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { readFileSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { WebchatConfig } from './types.js';
 import type { WebchatGateway } from './gateway.js';
 import { createWebchatGateway } from './gateway.js';
+
+// Get current directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // SSE connections storage
 const sseConnections = new Map<string, Set<ServerResponse>>();
@@ -229,14 +236,30 @@ export function createHttpHandlers(config: WebchatConfig, gateway: WebchatGatewa
         return;
       }
 
-      const url = new URL(req.url || '', 'http://localhost');
+      // Debug logging
+      console.log('[tinywebchat] SSE request:', req.url);
+      
+      const url = new URL(req.url || '', `http://localhost:${config.port}`);
       const sessionId = url.searchParams.get('sessionId');
       const token = url.searchParams.get('token') || getAuthToken(req);
 
-      if (!sessionId || !token || !(await gateway.validateToken(sessionId, token))) {
+      console.log('[tinywebchat] SSE sessionId:', sessionId, 'token:', token ? 'present' : 'missing');
+
+      if (!sessionId || !token) {
+        console.log('[tinywebchat] SSE auth failed: missing sessionId or token');
         res.statusCode = 401;
         res.setHeader('Content-Type', 'text/plain');
-        res.end('Unauthorized');
+        res.end('Unauthorized: missing sessionId or token');
+        return;
+      }
+
+      const isValid = await gateway.validateToken(sessionId, token);
+      console.log('[tinywebchat] SSE token valid:', isValid);
+      
+      if (!isValid) {
+        res.statusCode = 401;
+        res.setHeader('Content-Type', 'text/plain');
+        res.end('Unauthorized: invalid token');
         return;
       }
 
@@ -286,6 +309,30 @@ export async function createStandaloneServer(config: WebchatConfig): Promise<voi
       const path = url.pathname;
 
       // Route handling
+      // Serve tinywebchat.html at root path
+      if (path === '/' || path === '/tinywebchat.html') {
+        // Try multiple paths for both dev (src) and production (dist)
+        const possiblePaths = [
+          join(__dirname, '../../../../tinywebchat.html'),   // dev: src/channels/plugins/webchat -> project root
+          join(__dirname, '../../../tinywebchat.html'),       // prod: dist/channels/plugins/webchat -> dist root
+        ];
+        
+        for (const htmlPath of possiblePaths) {
+          if (existsSync(htmlPath)) {
+            const html = readFileSync(htmlPath, 'utf-8');
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.setHeader('Access-Control-Allow-Origin', config.allowedOrigins?.join(', ') || '*');
+            res.end(html);
+            return;
+          }
+        }
+        
+        // If file not found, return 404
+        sendJson(res, 404, { error: 'Chat UI not found. Please ensure tinywebchat.html is deployed.' }, config.allowedOrigins);
+        return;
+      }
+
       if (path === '/health') {
         await handlers.health(req, res);
       } else if (path === '/v1/webchat/sessions' && req.method === 'POST') {

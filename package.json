@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "build:plugin": "tsc && cp openclaw-plugin.yaml openclaw.plugin.json dist/",
+    "build:plugin": "tsc && cp openclaw-plugin.yaml openclaw.plugin.json tinywebchat.html dist/",
     "build:watch": "tsc --watch",
     "dev": "tsc --watch",
     "server": "npx tsx server/index.ts",
@@ -38,6 +38,7 @@
   "files": [
     "dist/",
     "sdk/",
+    "tinywebchat.html",
     "openclaw-plugin.yaml",
     "openclaw.plugin.json",
     "README.md",

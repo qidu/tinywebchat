@@ -165,7 +165,7 @@ describe('Plugin Configuration Schema', () => {
     const schema = webchatPlugin.configSchema;
     
     expect(schema.properties.enabled.default).toBe(true);
-    expect(schema.properties.port.default).toBe(3008);
+    expect(schema.properties.port.default).toBe(18799);
     expect(schema.properties.agentMode.default).toBe('cli');
     expect(schema.properties.processingMode.default).toBe('queue');
   });

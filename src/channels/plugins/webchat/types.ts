@@ -105,7 +105,7 @@ export interface MessageListResponse {
  */
 export const DEFAULT_WEBCONFIG: WebchatConfig = {
   enabled: true,
-  port: 3008,
+  port: 18799,
   agentMode: 'cli',  // Default: CLI mode for standalone usage
   processingMode: 'queue',
   sessionTimeout: 3600, // 1 hour
